@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Unity.VisualScripting.Community
@@ -94,6 +95,9 @@ namespace Unity.VisualScripting.Community
         [DoNotSerialize]
         private ReflectedInfo Info;
 
+        [DoNotSerialize]
+        private object eventInstance;
+
         protected override void Definition()
         {
             enter = ControlInput(nameof(enter), Trigger);
@@ -154,7 +158,7 @@ namespace Unity.VisualScripting.Community
 
             if (_eventType == null) return exit;
 
-            var eventInstance = System.Activator.CreateInstance(_eventType);
+            eventInstance ??= System.Activator.CreateInstance(_eventType);
 
             for (var i = 0; i < inputPorts.Count; i++)
             {
