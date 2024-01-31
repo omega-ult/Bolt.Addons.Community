@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Unity.VisualScripting.Community
 {
     [Serializable]
-    [CreateAssetMenu(fileName = "New Interface", menuName = "Visual Scripting/Community/Code/Interface")]
+    // [CreateAssetMenu(fileName = "New Interface", menuName = "Visual Scripting/Community/Code/Interface")]
     [RenamedFrom("Bolt.Addons.Community.Code.InterfaceAsset")]
     public sealed class InterfaceAsset : CodeAsset
     {

@@ -21,7 +21,7 @@ namespace Unity.VisualScripting.Community
         public Color OutputColor = Color.white;
 
         [Inspectable]
-        public bool SnapToGrid;
+        public bool SnapToGrid = true;
 
         [Inspectable]
         public bool InputVisible = true;

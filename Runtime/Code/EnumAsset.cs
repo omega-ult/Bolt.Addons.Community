@@ -4,7 +4,7 @@ using Unity.VisualScripting;
 
 namespace Unity.VisualScripting.Community
 {
-    [CreateAssetMenu(menuName = "Visual Scripting/Community/Code/Enum")]
+    // [CreateAssetMenu(menuName = "Visual Scripting/Community/Code/Enum")]
     [RenamedFrom("Bolt.Addons.Community.Code.EnumAsset")]
     public class EnumAsset : CodeAsset
     {

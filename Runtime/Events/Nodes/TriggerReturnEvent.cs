@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using UnityEngine.Serialization;
 
 namespace Unity.VisualScripting.Community
 {
@@ -66,8 +67,8 @@ namespace Unity.VisualScripting.Community
         /// <summary>
         /// The Control Output invoked immediately after we trigger the return. If the Return Event returns within the same frame, Complete will happen after this port is triggered.
         /// </summary>
-        [DoNotSerialize]
-        public ControlOutput exit;
+        // [DoNotSerialize]
+        // public ControlOutput returned;
 
         /// <summary>
         /// The Control Output port to invoke or run when the event has been returned from.
@@ -97,11 +98,11 @@ namespace Unity.VisualScripting.Community
 
             arguments.Clear();
 
-            enter = ControlInput("enter", Enter);
+            enter = ControlInput(nameof(enter), Enter);
 
-            name = ValueInput<string>("name", string.Empty);
+            name = ValueInput<string>(nameof(name), string.Empty);
 
-            if (!global) target = ValueInput<GameObject>("target", (GameObject)null).NullMeansSelf();
+            if (!global) target = ValueInput<GameObject>(nameof(target), (GameObject)null).NullMeansSelf();
 
             for (int i = 0; i < count; i++)
             {
@@ -110,10 +111,10 @@ namespace Unity.VisualScripting.Community
                 Requirement(input, enter);
             }
 
-            exit = ControlOutput("exit");
-            value = ValueOutput<object>("value", GetValue);
+            // returned = ControlOutput(nameof(returned));
+            value = ValueOutput<object>(nameof(value), GetValue);
             
-            Succession(enter, exit);
+            // Succession(enter, returned);
             Requirement(name, enter);
             if (!global) Requirement(target, enter);
             Succession(enter, trigger);
@@ -130,7 +131,7 @@ namespace Unity.VisualScripting.Community
             argumentList.AddRange(arguments.Select(new System.Func<ValueInput, object>(flow.GetConvertedValue)));
             ReturnEvent.Trigger(this, global ? (GameObject)null : flow.GetValue<GameObject>(target), flow.GetValue<string>(name), global, argumentList.ToArray());
           
-            return exit;
+            return null;
         }
 
         /// <summary>

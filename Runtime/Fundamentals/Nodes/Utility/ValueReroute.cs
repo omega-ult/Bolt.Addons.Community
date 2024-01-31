@@ -18,7 +18,7 @@ namespace Unity.VisualScripting.Community
         public Type portType = typeof(object);
 
         [Inspectable]
-        public bool SnapToGrid;
+        public bool SnapToGrid = true;
 
         [Inspectable]
         public bool inputVisible = true;

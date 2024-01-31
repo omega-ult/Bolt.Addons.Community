@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace Unity.VisualScripting.Community
 {
-    [CreateAssetMenu(menuName = "Visual Scripting/Community/Code/Delegate")]
+    // [CreateAssetMenu(menuName = "Visual Scripting/Community/Code/Delegate")]
     [RenamedFrom("Bolt.Addons.Community.Code.DelegateAsset")]
     [Serializable]
     public sealed class DelegateAsset : CodeAsset
