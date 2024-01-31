@@ -34,8 +34,8 @@ namespace Unity.VisualScripting.Community
             container.style.flexGrow = 1;
 
             container.Add(SelectionToSuperUnit());
-            container.Add(GenerateCode());
-            container.Add(QuickAccess());
+            // container.Add(GenerateCode());
+            // container.Add(QuickAccess());
 
             minSize = new Vector2(250, minSize.y);
 
@@ -128,10 +128,10 @@ namespace Unity.VisualScripting.Community
             buttonContainer.style.flexDirection = FlexDirection.Row;
             buttonContainer.style.height = 24;
 
-            // var csPreviewButton = new Button(() => { CSharpPreviewWindow.Open(); }) { text = "Open C# Preview Window" };
-            // csPreviewButton.style.flexGrow = 1;
+            var csPreviewButton = new Button(() => { CSharpPreviewWindow.Open(); }) { text = "Open C# Preview Window" };
+            csPreviewButton.style.flexGrow = 1;
 
-            // buttonContainer.Add(csPreviewButton);
+            buttonContainer.Add(csPreviewButton);
 
             header.Add(label);
             container.Add(header);
