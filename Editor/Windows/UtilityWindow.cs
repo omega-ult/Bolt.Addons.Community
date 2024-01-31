@@ -128,10 +128,10 @@ namespace Unity.VisualScripting.Community
             buttonContainer.style.flexDirection = FlexDirection.Row;
             buttonContainer.style.height = 24;
 
-            var csPreviewButton = new Button(() => { CSharpPreviewWindow.Open(); }) { text = "Open C# Preview Window" };
-            csPreviewButton.style.flexGrow = 1;
+            // var csPreviewButton = new Button(() => { CSharpPreviewWindow.Open(); }) { text = "Open C# Preview Window" };
+            // csPreviewButton.style.flexGrow = 1;
 
-            buttonContainer.Add(csPreviewButton);
+            // buttonContainer.Add(csPreviewButton);
 
             header.Add(label);
             container.Add(header);
