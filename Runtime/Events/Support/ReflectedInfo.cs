@@ -7,7 +7,7 @@ using System.Text;
 namespace Unity.VisualScripting.Community
 {
     [RenamedFrom("Bolt.Addons.Community.DefinedEvents.Support.ReflectedInfo")]
-    class ReflectedInfo
+    public class ReflectedInfo
     {
         public static ReflectedInfo For<T>()
         {
