@@ -11,7 +11,7 @@ public class CustomScriptGeneratorWindow : EditorWindow
     private Texture2D customIcon = null;
     private string iconPath = "";
 
-    [MenuItem("Window/Community Addons/Unit Descriptor Generator")]
+    // [MenuItem("Window/Community Addons/Unit Descriptor Generator")]
     public static void ShowWindow()
     {
         GetWindow<CustomScriptGeneratorWindow>("Node Descriptor Generator");

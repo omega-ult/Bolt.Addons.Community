@@ -18,7 +18,7 @@ namespace Unity.VisualScripting.Community
         [SerializeField]
         public bool assetWasCopied;
 
-        [MenuItem("Window/Community Addons/New Editor Window View")]
+        // [MenuItem("Window/Community Addons/New Editor Window View")]
         public static void Open()
         {
             EditorWindowView window = CreateInstance<EditorWindowView>();

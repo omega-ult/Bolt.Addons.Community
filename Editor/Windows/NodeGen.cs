@@ -19,7 +19,7 @@ public class CustomNodeGeneratorWindow : EditorWindow
     private Vector2 scrollPosition;
     private string filePath = "";
 
-    [MenuItem("Window/Community Addons/Custom Node Generator")]
+    // [MenuItem("Window/Community Addons/Custom Node Generator")]
     public static void ShowWindow()
     {
         var window = GetWindow<CustomNodeGeneratorWindow>("Custom Node Generator");

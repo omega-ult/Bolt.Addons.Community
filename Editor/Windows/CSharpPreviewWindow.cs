@@ -18,7 +18,7 @@ namespace Unity.VisualScripting.Community
 
         private bool cached;
 
-        [MenuItem("Window/Community Addons/C# Preview")]
+        // [MenuItem("Window/Community Addons/C# Preview")]
         public static void Open()
         {
             CSharpPreviewWindow window = GetWindow<CSharpPreviewWindow>();
