@@ -50,7 +50,8 @@ namespace Unity.VisualScripting.Community
 
                     return;
                 }
-                Debug.Log("No Community Options script found; using defaults");
+                if (!SilenceLogMessages)
+                    Debug.Log("No Community Options script found; using defaults");
             }
         }
 
@@ -69,6 +70,6 @@ namespace Unity.VisualScripting.Community
 
         public static bool DefinedEvent_ForceOptimizedInEditor { get; } = false;
         public static bool DefinedEvent_RestrictEventTypes { get; } = true;
-        public static bool SilenceLogMessages { get; } = false;
+        public static bool SilenceLogMessages { get; } = true;
     }
 }
