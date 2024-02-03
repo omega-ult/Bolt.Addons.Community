@@ -13,7 +13,7 @@ namespace Unity.VisualScripting.Community
 
         public static Event e;
 
-        [MenuItem("Window/Community Addons/Utilities")]
+        [MenuItem("Window/UVS Community/Utilities")]
         public static void Open()
         {
             var window = GetWindow<UtilityWindow>();
@@ -34,10 +34,11 @@ namespace Unity.VisualScripting.Community
             container.style.flexGrow = 1;
 
             container.Add(SelectionToSuperUnit());
+            // container.Add(CopyVariables());
             // container.Add(GenerateCode());
             // container.Add(QuickAccess());
 
-            minSize = new Vector2(250, minSize.y);
+            minSize = new Vector2(200, minSize.y);
 
             root.Add(container);
         }
