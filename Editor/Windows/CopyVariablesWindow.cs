@@ -70,28 +70,29 @@ namespace Unity.VisualScripting.Community
 
         private void OnGUI()
         {
-            if (selectedObject == null)
-            {
-                EditorGUILayout.HelpBox("No object selected.", MessageType.Info, true);
-                return;
-            }
-
             GUILayout.BeginVertical();
-            EditorGUILayout.ObjectField("Selected Object", selectedObject, typeof(Object), true);
+            if (selectedObject != null)
+            {
+                GUILayout.Label("Selected Object", EditorStyles.boldLabel);
+                GUILayout.BeginVertical("box");
+                EditorGUILayout.ObjectField("Selected Object", selectedObject, typeof(Object), true);
 
-            if (selectedObject.GetType() == typeof(ScriptGraphAsset))
-            {
-                var graph = selectedObject as ScriptGraphAsset;
-                var vars = VisualScripting.Variables.Graph(graph.GetReference());
-                DrawVariables(vars, "Graph");
+                if (selectedObject.GetType() == typeof(ScriptGraphAsset))
+                {
+                    var graph = selectedObject as ScriptGraphAsset;
+                    var vars = VisualScripting.Variables.Graph(graph.GetReference());
+                    DrawVariables(vars, "Graph");
+                }
+                else if (selectedObject.GetType() == typeof(GameObject))
+                {
+                    var obj = selectedObject as GameObject;
+                    var vars = VisualScripting.Variables.Object(obj);
+                    DrawVariables(vars, "Object");
+                }
+                GUILayout.EndVertical();
+                // check selection 
             }
-            else if (selectedObject.GetType() == typeof(GameObject))
-            {
-                var obj = selectedObject as GameObject;
-                var vars = VisualScripting.Variables.Object(obj);
-                DrawVariables(vars, "Object");
-            }
-            // check selection 
+
 
             GUILayout.Label("Active Graph Editor", EditorStyles.boldLabel);
             GUILayout.BeginVertical("box");
@@ -129,6 +130,7 @@ namespace Unity.VisualScripting.Community
                     }
                 }
             }
+
             GUILayout.EndVertical();
 
             GUILayout.FlexibleSpace();
