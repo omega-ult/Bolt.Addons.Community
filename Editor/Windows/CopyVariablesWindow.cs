@@ -91,6 +91,7 @@ namespace Unity.VisualScripting.Community
                 }
                 GUILayout.EndVertical();
                 // check selection 
+                GUILayout.Space(10);
             }
 
 
@@ -105,7 +106,7 @@ namespace Unity.VisualScripting.Community
                 {
                     var mainGraph = activeGraph as FlowGraph;
                     // GUILayout.Label(activeGraph.GetType().ToString());
-                    DrawVariables(mainGraph.variables, "Graph", "| ");
+                    DrawVariables(mainGraph.variables, "Graph");
                 }
 
                 var graphElems = activeGraph.elements;
@@ -122,10 +123,10 @@ namespace Unity.VisualScripting.Community
                             DrawVariables(vars, "Graph", "|| ");
                         }
 
-                        var embeded = subUnit.nest.embed;
-                        if (embeded != null)
+                        var embed = subUnit.nest.embed;
+                        if ( embed != null)
                         {
-                            DrawVariables(embeded.variables, "Embed", "|| ");
+                            DrawVariables( embed.variables, "Embed", "|| ");
                         }
                     }
                 }
