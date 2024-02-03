@@ -14,6 +14,7 @@ namespace Unity.VisualScripting.Community
     {
         private Object selectedObject;
         private VariableDeclarations copiedData = new();
+        private bool showSubGraph = false;
 
         [MenuItem("Window/UVS Community/Copy Variables")]
         public static void Open()
@@ -71,9 +72,9 @@ namespace Unity.VisualScripting.Community
         private void OnGUI()
         {
             GUILayout.BeginVertical();
+            GUILayout.Label("Selected Object", EditorStyles.boldLabel);
             if (selectedObject != null)
             {
-                GUILayout.Label("Selected Object", EditorStyles.boldLabel);
                 GUILayout.BeginVertical("box");
                 EditorGUILayout.ObjectField("Selected Object", selectedObject, typeof(Object), true);
 
@@ -89,6 +90,7 @@ namespace Unity.VisualScripting.Community
                     var vars = VisualScripting.Variables.Object(obj);
                     DrawVariables(vars, "Object");
                 }
+
                 GUILayout.EndVertical();
                 // check selection 
                 GUILayout.Space(10);
@@ -96,6 +98,7 @@ namespace Unity.VisualScripting.Community
 
 
             GUILayout.Label("Active Graph Editor", EditorStyles.boldLabel);
+            showSubGraph = GUILayout.Toggle(showSubGraph, "Show Sub Graphs");
             GUILayout.BeginVertical("box");
 
             var activeGraph = GraphWindow.active?.reference?.graph.Canvas().graph;
@@ -109,24 +112,28 @@ namespace Unity.VisualScripting.Community
                     DrawVariables(mainGraph.variables, "Graph");
                 }
 
-                var graphElems = activeGraph.elements;
-                foreach (var node in graphElems)
+                if (showSubGraph)
                 {
-                    if (node.GetType() == typeof(SubgraphUnit))
+                    var graphElems = activeGraph.elements;
+                    var prefix = "||> ";
+                    foreach (var node in graphElems)
                     {
-                        var subUnit = node as SubgraphUnit;
-                        GUILayout.Label($"Graph Variables of {subUnit.nest.graph.title} / {subUnit}");
-                        var graph = subUnit.nest.macro;
-                        if (graph != null)
+                        if (node.GetType() == typeof(SubgraphUnit))
                         {
-                            var vars = VisualScripting.Variables.Graph(graph.GetReference());
-                            DrawVariables(vars, "Graph", "|| ");
-                        }
+                            var subUnit = node as SubgraphUnit;
+                            GUILayout.Label($"Graph Variables of {subUnit.nest.graph.title} / {subUnit}");
+                            var graph = subUnit.nest.macro;
+                            if (graph != null)
+                            {
+                                var vars = VisualScripting.Variables.Graph(graph.GetReference());
+                                DrawVariables(vars, "Graph", prefix);
+                            }
 
-                        var embed = subUnit.nest.embed;
-                        if ( embed != null)
-                        {
-                            DrawVariables( embed.variables, "Embed", "|| ");
+                            var embed = subUnit.nest.embed;
+                            if (embed != null)
+                            {
+                                DrawVariables(embed.variables, "Embed", prefix);
+                            }
                         }
                     }
                 }
