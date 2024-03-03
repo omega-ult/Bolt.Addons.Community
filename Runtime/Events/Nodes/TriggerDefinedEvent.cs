@@ -15,8 +15,7 @@ namespace Unity.VisualScripting.Community
     {
         #region Event Type Handling
 
-        [SerializeAs(nameof(eventType))]
-        private System.Type _eventType;
+        [SerializeAs(nameof(eventType))] private System.Type _eventType;
 
 
         /// <summary>
@@ -27,14 +26,8 @@ namespace Unity.VisualScripting.Community
         [InspectableIf(nameof(IsNotRestricted))]
         public System.Type eventType
         {
-            get
-            {
-                return _eventType;
-            }
-            set
-            {
-                _eventType = value;
-            }
+            get { return _eventType; }
+            set { _eventType = value; }
         }
 
         /// <summary>
@@ -46,14 +39,8 @@ namespace Unity.VisualScripting.Community
         [Unity.VisualScripting.TypeFilter(TypesMatching.AssignableToAll, typeof(IDefinedEvent))]
         public System.Type restrictedEventType
         {
-            get
-            {
-                return _eventType;
-            }
-            set
-            {
-                _eventType = value;
-            }
+            get { return _eventType; }
+            set { _eventType = value; }
         }
 
 
@@ -76,7 +63,17 @@ namespace Unity.VisualScripting.Community
         public ValueInput zzzEventTarget { get; private set; }
 
         [DoNotSerialize]
-        public List<ValueInput> inputPorts { get; } = new List<ValueInput>();
+        [Inspectable, UnitHeaderInspectable("SealArgument")]
+        public bool sealArgument
+        {
+            get => _sealArgument;
+            set => _sealArgument = value;
+        }
+
+        [SerializeAs(nameof(sealArgument))] private bool _sealArgument = false;
+
+        [DoNotSerialize] public ValueInput eventArgument;
+        [DoNotSerialize] public List<ValueInput> inputPorts { get; } = new List<ValueInput>();
 
         /// <summary>
         /// The entry point to trigger the event.
@@ -92,11 +89,9 @@ namespace Unity.VisualScripting.Community
         [PortLabelHidden]
         public ControlOutput exit { get; private set; }
 
-        [DoNotSerialize]
-        private ReflectedInfo Info;
+        [DoNotSerialize] private ReflectedInfo Info;
 
-        [DoNotSerialize]
-        private object eventInstance;
+        [DoNotSerialize] private object eventInstance;
 
         protected override void Definition()
         {
@@ -117,65 +112,77 @@ namespace Unity.VisualScripting.Community
             inputPorts.Clear();
             if (_eventType == null)
                 return;
-
-            Info = ReflectedInfo.For(_eventType);
-            foreach (var field in Info.reflectedFields)
+            if (_sealArgument)
             {
-                if (field.Value.FieldType == typeof(bool))
-                    inputPorts.Add(ValueInput<bool>(field.Value.Name, false));
-                else if (field.Value.FieldType == typeof(int))
-                    inputPorts.Add(ValueInput<int>(field.Value.Name, 0));
-                else if(field.Value.FieldType == typeof(float))
-                    inputPorts.Add(ValueInput<float>(field.Value.Name, 0.0f));
-                else if (field.Value.FieldType == typeof(string))
-                    inputPorts.Add(ValueInput<string>(field.Value.Name, ""));
-                else if (field.Value.FieldType == typeof(GameObject))
-                    inputPorts.Add(ValueInput<GameObject>(field.Value.Name, null).NullMeansSelf());
-                else
-                    inputPorts.Add(ValueInput(field.Value.FieldType, field.Value.Name));
+                eventArgument = ValueInput(_eventType, _eventType.Name);
             }
-
-
-            foreach (var property in Info.reflectedProperties)
+            else
             {
-                if (property.Value.PropertyType == typeof(bool))
-                    inputPorts.Add(ValueInput<bool>(property.Value.Name, false));
-                else if (property.Value.PropertyType == typeof(int))
-                    inputPorts.Add(ValueInput<int>(property.Value.Name, 0));
-                else if (property.Value.PropertyType == typeof(float))
-                    inputPorts.Add(ValueInput<float>(property.Value.Name, 0.0f));
-                else if (property.Value.PropertyType == typeof(string))
-                    inputPorts.Add(ValueInput<string>(property.Value.Name, ""));
-                else if (property.Value.PropertyType == typeof(GameObject))
-                    inputPorts.Add(ValueInput<GameObject>(property.Value.Name, null).NullMeansSelf());
-                else
-                    inputPorts.Add(ValueInput(property.Value.PropertyType, property.Value.Name));
+                Info = ReflectedInfo.For(_eventType);
+                foreach (var field in Info.reflectedFields)
+                {
+                    if (field.Value.FieldType == typeof(bool))
+                        inputPorts.Add(ValueInput<bool>(field.Value.Name, false));
+                    else if (field.Value.FieldType == typeof(int))
+                        inputPorts.Add(ValueInput<int>(field.Value.Name, 0));
+                    else if (field.Value.FieldType == typeof(float))
+                        inputPorts.Add(ValueInput<float>(field.Value.Name, 0.0f));
+                    else if (field.Value.FieldType == typeof(string))
+                        inputPorts.Add(ValueInput<string>(field.Value.Name, ""));
+                    else if (field.Value.FieldType == typeof(GameObject))
+                        inputPorts.Add(ValueInput<GameObject>(field.Value.Name, null).NullMeansSelf());
+                    else
+                        inputPorts.Add(ValueInput(field.Value.FieldType, field.Value.Name));
+                }
+
+
+                foreach (var property in Info.reflectedProperties)
+                {
+                    if (property.Value.PropertyType == typeof(bool))
+                        inputPorts.Add(ValueInput<bool>(property.Value.Name, false));
+                    else if (property.Value.PropertyType == typeof(int))
+                        inputPorts.Add(ValueInput<int>(property.Value.Name, 0));
+                    else if (property.Value.PropertyType == typeof(float))
+                        inputPorts.Add(ValueInput<float>(property.Value.Name, 0.0f));
+                    else if (property.Value.PropertyType == typeof(string))
+                        inputPorts.Add(ValueInput<string>(property.Value.Name, ""));
+                    else if (property.Value.PropertyType == typeof(GameObject))
+                        inputPorts.Add(ValueInput<GameObject>(property.Value.Name, null).NullMeansSelf());
+                    else
+                        inputPorts.Add(ValueInput(property.Value.PropertyType, property.Value.Name));
+                }
             }
         }
 
         private ControlOutput Trigger(Flow flow)
         {
-
             if (_eventType == null) return exit;
-
-            eventInstance ??= System.Activator.CreateInstance(_eventType);
-
-            for (var i = 0; i < inputPorts.Count; i++)
+            if (_sealArgument)
             {
-                var inputPort = inputPorts[i];
-                var key = inputPort.key;
-                var value = flow.GetValue(inputPort);
-                if (Info.reflectedFields.ContainsKey(key))
+                eventInstance = flow.GetValue(eventArgument, _eventType);
+            }
+            else
+            {
+                eventInstance ??= System.Activator.CreateInstance(_eventType);
+
+                for (var i = 0; i < inputPorts.Count; i++)
                 {
-                    var reflectedField = Info.reflectedFields[key];
-                    reflectedField.SetValue(eventInstance, value);
-                }
-                else if (Info.reflectedProperties.ContainsKey(key))
-                {
-                    var reflectedProperty = Info.reflectedProperties[key];
-                    reflectedProperty.SetValue(eventInstance, value);
+                    var inputPort = inputPorts[i];
+                    var key = inputPort.key;
+                    var value = flow.GetValue(inputPort);
+                    if (Info.reflectedFields.ContainsKey(key))
+                    {
+                        var reflectedField = Info.reflectedFields[key];
+                        reflectedField.SetValue(eventInstance, value);
+                    }
+                    else if (Info.reflectedProperties.ContainsKey(key))
+                    {
+                        var reflectedProperty = Info.reflectedProperties[key];
+                        reflectedProperty.SetValue(eventInstance, value);
+                    }
                 }
             }
+
 
             DefinedEventNode.Trigger(flow.GetValue<GameObject>(zzzEventTarget), eventInstance);
 

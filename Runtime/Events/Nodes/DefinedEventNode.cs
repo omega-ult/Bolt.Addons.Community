@@ -18,21 +18,27 @@ namespace Unity.VisualScripting.Community
         const string EventName = "OnDefinedEvent";
 
         #region Event Type Handling
-        [SerializeAs(nameof(eventType))]
-        private System.Type _eventType;
-        
+
+        [SerializeAs(nameof(eventType))] private System.Type _eventType;
+
 
         [DoNotSerialize]
         [InspectableIf(nameof(IsNotRestricted))]
         public System.Type eventType
         {
-            get {
-                return _eventType; }
-            set
-            {
-                _eventType = value;
-            }
+            get { return _eventType; }
+            set { _eventType = value; }
         }
+
+        [DoNotSerialize]
+        [Inspectable, UnitHeaderInspectable("SealArgument")]
+        public bool sealArgument
+        {
+            get => _sealArgument;
+            set => _sealArgument = value;
+        }
+
+        [SerializeAs(nameof(sealArgument))] private bool _sealArgument = false;
 
         [DoNotSerialize]
         [UnitHeaderInspectable]
@@ -40,14 +46,8 @@ namespace Unity.VisualScripting.Community
         [Unity.VisualScripting.TypeFilter(TypesMatching.AssignableToAll, typeof(IDefinedEvent))]
         public System.Type restrictedEventType
         {
-            get
-            {
-                return _eventType;
-            }
-            set
-            {
-                _eventType = value;
-            }
+            get { return _eventType; }
+            set { _eventType = value; }
         }
 
         public bool IsRestricted
@@ -59,18 +59,18 @@ namespace Unity.VisualScripting.Community
         {
             get { return !IsRestricted; }
         }
+
         #endregion
 
 
-        [DoNotSerialize]
-        public List<ValueOutput> outputPorts { get; } = new List<ValueOutput>();
+        [DoNotSerialize] public ValueOutput eventArgument;
 
-        [DoNotSerialize]
-        private ReflectedInfo Info;
+        [DoNotSerialize] public List<ValueOutput> outputPorts { get; } = new List<ValueOutput>();
+
+        [DoNotSerialize] private ReflectedInfo Info;
 
         public override Type MessageListenerType => null;
         protected override string hookName => EventName;
-
 
 
         protected override bool ShouldTrigger(Flow flow, DefinedEventArgs args)
@@ -87,44 +87,59 @@ namespace Unity.VisualScripting.Community
         }
 
 
-
         private void BuildFromInfo()
         {
             outputPorts.Clear();
             if (_eventType == null)
                 return;
 
-            Info = ReflectedInfo.For(_eventType);
-            foreach (var field in Info.reflectedFields)
+            if (_sealArgument)
             {
-                outputPorts.Add(ValueOutput(field.Value.FieldType, field.Value.Name));
+                eventArgument = ValueOutput(_eventType, _eventType.Name);
             }
-
-
-            foreach (var property in Info.reflectedProperties)
+            else
             {
-                outputPorts.Add(ValueOutput(property.Value.PropertyType, property.Value.Name));
+                Info = ReflectedInfo.For(_eventType);
+                foreach (var field in Info.reflectedFields)
+                {
+                    outputPorts.Add(ValueOutput(field.Value.FieldType, field.Value.Name));
+                }
+
+
+                foreach (var property in Info.reflectedProperties)
+                {
+                    outputPorts.Add(ValueOutput(property.Value.PropertyType, property.Value.Name));
+                }
             }
         }
 
         protected override void AssignArguments(Flow flow, DefinedEventArgs args)
         {
-            for (var i = 0; i < outputPorts.Count; i++)
+            if (_sealArgument)
             {
-                var outputPort = outputPorts[i];
-                var key = outputPort.key;
-                if (Info.reflectedFields.ContainsKey(key))
+                flow.SetValue(eventArgument, args.eventData);
+            }
+            else
+            {
+                for (var i = 0; i < outputPorts.Count; i++)
                 {
-                    var reflectedField = Info.reflectedFields[key];
-                    flow.SetValue(outputPort, reflectedField.GetValue(args.eventData));
+                    var outputPort = outputPorts[i];
+                    var key = outputPort.key;
+                    if (Info.reflectedFields.ContainsKey(key))
+                    {
+                        var reflectedField = Info.reflectedFields[key];
+
+                        flow.SetValue(outputPort, reflectedField.GetValue(args.eventData));
+                    }
+                    else if (Info.reflectedProperties.ContainsKey(key))
+                    {
+                        var reflectedProperty = Info.reflectedProperties[key];
+                        flow.SetValue(outputPort, reflectedProperty.GetValue(args.eventData));
+                    }
                 }
-                else if (Info.reflectedProperties.ContainsKey(key))
-                {
-                    var reflectedProperty = Info.reflectedProperties[key];
-                    flow.SetValue(outputPort, reflectedProperty.GetValue(args.eventData));
-                }
-            } 
+            }
         }
+
         public override EventHook GetHook(GraphReference reference)
         {
             var refData = reference.GetElementData<Data>(this);
@@ -142,18 +157,18 @@ namespace Unity.VisualScripting.Community
         }
 
 
-        public static void Trigger(GameObject target,object eventData)
+        public static void Trigger(GameObject target, object eventData)
         {
             var eventHook = ConstructHook(target, eventData.GetType());
             EventBus.Trigger(eventHook, new DefinedEventArgs(eventData));
         }
 
-        
 
-        public static IDisposable RegisterListener<T>(GameObject target, Action<T> onEvent) 
+        public static IDisposable RegisterListener<T>(GameObject target, Action<T> onEvent)
         {
             var eventHook = ConstructHook(target, typeof(T));
-            Action<DefinedEventArgs> action = (x) => {
+            Action<DefinedEventArgs> action = (x) =>
+            {
                 if (x.eventData.GetType() == typeof(T))
                     onEvent((T)x.eventData);
             };
