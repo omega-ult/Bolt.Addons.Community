@@ -65,6 +65,20 @@ namespace Unity.VisualScripting.Community
 
                 Repaint();
             }
+            if (GUILayout.Button($"Add to"))
+            {
+                var enums = copiedData.GetEnumerator();
+                while (enums.MoveNext())
+                {
+                    var decl = enums.Current;
+                    if (!vars.IsDefined(decl.name))
+                    {
+                        vars.Set(decl.name, decl.value);
+                    }
+                }
+
+                Repaint();
+            }
 
             GUILayout.EndHorizontal();
         }
