@@ -16,6 +16,7 @@
         OrderByDescending,
         Single,
         Where,
-        Select
+        Select,
+        DistinctBy
     }
 }
