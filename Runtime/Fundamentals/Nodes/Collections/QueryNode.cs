@@ -118,6 +118,9 @@ namespace Unity.VisualScripting.Community
                 case QueryOperation.Where:
                     condition = ValueInput<bool>("condition");
                     break;
+                case QueryOperation.Select:
+                    condition = ValueInput<object>("content");
+                    break;
             }
 
             exit = ControlOutput("exit");
@@ -148,6 +151,9 @@ namespace Unity.VisualScripting.Community
                     result = ValueOutput<object>("result", (flow) => { return single; });
                     break;
                 case QueryOperation.Where:
+                    result = ValueOutput("result", (flow) => { return output; });
+                    break;
+                case QueryOperation.Select:
                     result = ValueOutput("result", (flow) => { return output; });
                     break;
             }
@@ -183,6 +189,9 @@ namespace Unity.VisualScripting.Community
                     Requirement(condition, enter);
                     break;
                 case QueryOperation.Where:
+                    Requirement(condition, enter);
+                    break;
+                case QueryOperation.Select:
                     Requirement(condition, enter);
                     break;
             }
@@ -264,6 +273,16 @@ namespace Unity.VisualScripting.Community
                         _flow = Flow.New(flow.stack.AsReference());
                         _flow.Invoke(body);
                         return _flow.GetValue<bool>(condition);
+                    });
+                    break;
+                
+                case QueryOperation.Select:
+                    output = flow.GetValue<IEnumerable>(collection).Cast<object>().Select((item) =>
+                    {
+                        current = item;
+                        _flow = Flow.New(flow.stack.AsReference());
+                        _flow.Invoke(body);
+                        return _flow.GetValue<object>(condition);
                     });
                     break;
             }
