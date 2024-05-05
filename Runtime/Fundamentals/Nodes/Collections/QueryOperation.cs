@@ -17,6 +17,7 @@
         Single,
         Where,
         Select,
-        DistinctBy
+        DistinctBy,
+        Count
     }
 }

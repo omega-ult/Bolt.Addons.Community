@@ -124,6 +124,9 @@ namespace Unity.VisualScripting.Community
                 case QueryOperation.DistinctBy:
                     condition = ValueInput<object>("content");
                     break;
+                case QueryOperation.Count:
+                    condition = ValueInput<bool>("content");
+                    break;
             }
 
             exit = ControlOutput("exit");
@@ -161,6 +164,9 @@ namespace Unity.VisualScripting.Community
                     break;
                 case QueryOperation.DistinctBy:
                     result = ValueOutput("result", (flow) => { return output; });
+                    break;
+                case QueryOperation.Count:
+                    result = ValueOutput("result", (flow) => { return single; });
                     break;
             }
 
@@ -201,6 +207,9 @@ namespace Unity.VisualScripting.Community
                     Requirement(condition, enter);
                     break;
                 case QueryOperation.DistinctBy:
+                    Requirement(condition, enter);
+                    break;
+                case QueryOperation.Count:
                     Requirement(condition, enter);
                     break;
             }
@@ -301,6 +310,15 @@ namespace Unity.VisualScripting.Community
                         _flow = Flow.New(flow.stack.AsReference());
                         _flow.Invoke(body);
                         return _flow.GetValue<object>(condition);
+                    });
+                    break;
+                case QueryOperation.Count:
+                    single = flow.GetValue<IEnumerable>(collection).Cast<object>().Count((item) =>
+                    {
+                        current = item;
+                        _flow = Flow.New(flow.stack.AsReference());
+                        _flow.Invoke(body);
+                        return _flow.GetValue<bool>(condition);
                     });
                     break;
             }
