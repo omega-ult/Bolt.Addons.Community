@@ -6,6 +6,7 @@ using UnityEngine;
 using Unity.VisualScripting;
 using UnityEngine.UIElements;
 using Unity.VisualScripting.Community.Libraries.Humility;
+using UnityEditor.SceneManagement;
 using UnityEditor.Search;
 
 namespace Unity.VisualScripting.Community
@@ -28,7 +29,7 @@ namespace Unity.VisualScripting.Community
         {
         }
 
-        void DrawVariables(VariableDeclarations vars, string type, string prefix = "")
+        void DrawVariables(GameObject target, VariableDeclarations vars, string type, string prefix = "")
         {
             if (vars.Any())
             {
@@ -56,6 +57,23 @@ namespace Unity.VisualScripting.Community
 
             if (GUILayout.Button($"Paste to"))
             {
+                if (type == "Object")
+                {
+                    var stage = PrefabStageUtility.GetCurrentPrefabStage();
+                    if (stage != null)
+                    {
+                        PrefabUtility.RecordPrefabInstancePropertyModifications(stage.prefabContentsRoot);
+                    }
+                    else
+                    {
+                        GameObject activeGameObject = Selection.activeGameObject;
+                        if (activeGameObject != null)
+                        {
+                            PrefabUtility.RecordPrefabInstancePropertyModifications(activeGameObject);
+                        }
+                    }
+                }
+
                 var enums = copiedData.GetEnumerator();
                 while (enums.MoveNext())
                 {
@@ -63,10 +81,30 @@ namespace Unity.VisualScripting.Community
                     vars.Set(decl.name, decl.value);
                 }
 
+                EditorUtility.SetDirty(target);
+
                 Repaint();
             }
+
             if (GUILayout.Button($"Add to"))
             {
+                if (type == "Object")
+                {
+                    var stage = PrefabStageUtility.GetCurrentPrefabStage();
+                    if (stage != null)
+                    {
+                        PrefabUtility.RecordPrefabInstancePropertyModifications(stage.prefabContentsRoot);
+                    }
+                    else
+                    {
+                        GameObject activeGameObject = Selection.activeGameObject;
+                        if (activeGameObject != null)
+                        {
+                            PrefabUtility.RecordPrefabInstancePropertyModifications(activeGameObject);
+                        }
+                    }
+                }
+
                 var enums = copiedData.GetEnumerator();
                 while (enums.MoveNext())
                 {
@@ -76,6 +114,8 @@ namespace Unity.VisualScripting.Community
                         vars.Set(decl.name, decl.value);
                     }
                 }
+
+                EditorUtility.SetDirty(target);
 
                 Repaint();
             }
@@ -96,13 +136,13 @@ namespace Unity.VisualScripting.Community
                 {
                     var graph = selectedObject as ScriptGraphAsset;
                     var vars = VisualScripting.Variables.Graph(graph.GetReference());
-                    DrawVariables(vars, "Graph");
+                    DrawVariables(null, vars, "Graph");
                 }
                 else if (selectedObject.GetType() == typeof(GameObject))
                 {
                     var obj = selectedObject as GameObject;
                     var vars = VisualScripting.Variables.Object(obj);
-                    DrawVariables(vars, "Object");
+                    DrawVariables(obj, vars, "Object");
                 }
 
                 GUILayout.EndVertical();
@@ -123,7 +163,7 @@ namespace Unity.VisualScripting.Community
                 {
                     var mainGraph = activeGraph as FlowGraph;
                     // GUILayout.Label(activeGraph.GetType().ToString());
-                    DrawVariables(mainGraph.variables, "Graph");
+                    DrawVariables(null, mainGraph.variables, "Graph");
                 }
 
                 if (showSubGraph)
@@ -140,13 +180,13 @@ namespace Unity.VisualScripting.Community
                             if (graph != null)
                             {
                                 var vars = VisualScripting.Variables.Graph(graph.GetReference());
-                                DrawVariables(vars, "Graph", prefix);
+                                DrawVariables(null, vars, "Graph", prefix);
                             }
 
                             var embed = subUnit.nest.embed;
                             if (embed != null)
                             {
-                                DrawVariables(embed.variables, "Embed", prefix);
+                                DrawVariables(null, embed.variables, "Embed", prefix);
                             }
                         }
                     }
