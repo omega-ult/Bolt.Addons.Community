@@ -493,7 +493,7 @@ namespace Unity.VisualScripting.Community
 
         private static string GetKeyName(ConnectionData data, List<string> keys)
         {
-            if (!keys.Contains(data.key) || data.externalPort.GetType() == typeof(ControlOutput))
+            if (!keys.Contains(data.key) || (data.externalPort != null && data.externalPort.GetType() == typeof(ControlOutput) ))
             {
                 return data.key;
             }
