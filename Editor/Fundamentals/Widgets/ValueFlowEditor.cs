@@ -3,15 +3,57 @@ using Unity.VisualScripting;
 using System;
 using System.Collections.Generic;
 using Unity.VisualScripting.Community;
+using UnityEditor;
 
 [Widget(typeof(ValueConnection))]
 public sealed class ValueConnectionWidget : UnitConnectionWidget<ValueConnection>
 {
     private bool canTrigger = true;
     private Color _color = Color.white;
+    private new ValueConnection.DebugData ConnectionDebugData => GetDebugData<ValueConnection.DebugData>();
 
     public ValueConnectionWidget(FlowCanvas canvas, ValueConnection connection) : base(canvas, connection)
     {
+    }
+
+    public override void DrawForeground()
+    {
+        base.DrawForeground();
+        if (BoltFlow.Configuration.showConnectionValues)
+        {
+            var showLastValue = EditorApplication.isPlaying && ConnectionDebugData.assignedLastValue;
+            var showPredictedvalue = BoltFlow.Configuration.predictConnectionValues && !EditorApplication.isPlaying &&
+                                     Flow.CanPredict(connection.source, reference);
+
+            if (showLastValue || showPredictedvalue)
+            {
+                var previousIconSize = EditorGUIUtility.GetIconSize();
+                EditorGUIUtility.SetIconSize(new Vector2(IconSize.Small, IconSize.Small));
+
+                object value;
+
+                if (showLastValue)
+                {
+                    value = ConnectionDebugData.lastValue;
+                }
+                else // if (showPredictedvalue)
+                {
+                    value = Flow.Predict(connection.source, reference);
+                }
+
+                var label = new GUIContent(value.ToShortString(), Icons.Type(value?.GetType())?[IconSize.Small]);
+                var labelSize = Styles.prediction.CalcSize(label);
+                var labelPosition = new Rect(position.position - labelSize / 2, labelSize);
+
+                BeginDim();
+
+                GUI.Label(labelPosition, label, Styles.prediction);
+
+                EndDim();
+
+                EditorGUIUtility.SetIconSize(previousIconSize);
+            }
+        }
     }
 
     public override void HandleInput()
@@ -30,7 +72,6 @@ public sealed class ValueConnectionWidget : UnitConnectionWidget<ValueConnection
                     canTrigger = false;
 
                     outputFlowReroute.outputVisible = !outputFlowReroute.outputVisible;
-
                 }
 
                 if (e.keyCode == KeyCode.Backspace && e.rawType == EventType.KeyUp)
@@ -49,7 +90,6 @@ public sealed class ValueConnectionWidget : UnitConnectionWidget<ValueConnection
                     canTrigger = false;
 
                     inputFlowReroute.inputVisible = !inputFlowReroute.inputVisible;
-
                 }
 
                 if (e.keyCode == KeyCode.Backspace && e.rawType == EventType.KeyUp)
@@ -71,6 +111,7 @@ public sealed class ValueConnectionWidget : UnitConnectionWidget<ValueConnection
             {
                 base.DrawConnection();
             }
+
             return;
         }
         else if (inputFlowReroute != null && !inputFlowReroute.inputVisible)
@@ -79,13 +120,15 @@ public sealed class ValueConnectionWidget : UnitConnectionWidget<ValueConnection
             {
                 base.DrawConnection();
             }
+
             return;
         }
 
         base.DrawConnection();
     }
 
-    protected override bool colorIfActive => !BoltFlow.Configuration.animateControlConnections || !BoltFlow.Configuration.animateValueConnections;
+    protected override bool colorIfActive => !BoltFlow.Configuration.animateControlConnections ||
+                                             !BoltFlow.Configuration.animateValueConnections;
 
     #region Droplets
 
@@ -93,7 +136,8 @@ public sealed class ValueConnectionWidget : UnitConnectionWidget<ValueConnection
 
     protected override bool showDroplets => BoltFlow.Configuration.animateControlConnections;
 
-    public override Color color => Unity.VisualScripting.ValueConnectionWidget.DetermineColor(connection.source.type, connection.destination.type);
+    public override Color color =>
+        Unity.VisualScripting.ValueConnectionWidget.DetermineColor(connection.source.type, connection.destination.type);
 
     protected override Vector2 GetDropletSize()
     {
@@ -109,4 +153,20 @@ public sealed class ValueConnectionWidget : UnitConnectionWidget<ValueConnection
     }
 
     #endregion
+
+    private static class Styles
+    {
+        static Styles()
+        {
+            prediction = new GUIStyle(EditorStyles.label);
+            prediction.normal.textColor = Color.white;
+            prediction.fontSize = 9;
+            prediction.normal.background = new Color(0, 0, 0, 0.25f).GetPixel();
+            prediction.padding = new RectOffset(4, 6, 3, 3);
+            prediction.margin = new RectOffset(0, 0, 0, 0);
+            prediction.alignment = TextAnchor.MiddleCenter;
+        }
+
+        public static readonly GUIStyle prediction;
+    }
 }
