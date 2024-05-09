@@ -17,8 +17,8 @@ namespace Unity.VisualScripting.Community
 
         [DoNotSerialize] [PortLabelHidden] public ControlOutput Exit { get; private set; }
 
-        public ValueInput Enabled { get; private set; }
-        public ValueInput LogObject { get; private set; }
+        [DoNotSerialize] public ValueInput Enabled { get; private set; }
+        [DoNotSerialize] public ValueInput LogObject { get; private set; }
 
 
         [DoNotSerialize] [UnitHeaderInspectable] [NodeButton("TriggerButton", "Continue")]
