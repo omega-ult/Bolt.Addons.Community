@@ -41,18 +41,18 @@ namespace Unity.VisualScripting.Community
             Enter = ControlInput(nameof(Enter), flow =>
             {
                 var enabled = flow.GetValue<bool>(Enabled);
-                var logObject = flow.GetValue(LogObject);
-                if (logObject == null)
-                {
-                    Debug.Log("Break point hit.", flow.stack.gameObject);
-                }
-                else
-                {
-                    Debug.Log(logObject, flow.stack.gameObject);
-                }
-
                 if (enabled)
                 {
+                    var logObject = flow.GetValue(LogObject);
+                    if (logObject == null)
+                    {
+                        Debug.Log("Break point hit.", flow.stack.gameObject);
+                    }
+                    else
+                    {
+                        Debug.Log(logObject, flow.stack.gameObject);
+                    }
+
                     PauseEditor();
                 }
 
