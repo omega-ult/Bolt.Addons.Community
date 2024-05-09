@@ -7,10 +7,17 @@ namespace Unity.VisualScripting.Community.Utility
     public class NodeButtonAttribute : Attribute
     {
         public string action;
+        public string displayName;
 
         public NodeButtonAttribute(string action)
         {
             this.action = action;
+            this.displayName = "Trigger";
+        }
+        public NodeButtonAttribute(string action, string displayName)
+        {
+            this.action = action;
+            this.displayName = displayName;
         }
     }
 }
