@@ -8,7 +8,7 @@ using UnityEditor;
 
 namespace Unity.VisualScripting.Community
 {
-    [UnitTitle("BreakPoint")]
+    [UnitTitle("Break Point")]
     [TypeIcon(typeof(Debug))]
     [UnitCategory("Community/Utility")]
     public class BreakPoint : Unit
