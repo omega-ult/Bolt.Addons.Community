@@ -17,6 +17,7 @@ namespace Unity.VisualScripting.Community
         enum MatchType
         {
             Type,
+            Method,
             Field,
             Reference
         }
@@ -35,6 +36,7 @@ namespace Unity.VisualScripting.Community
 
         private bool _caseSensitive = true;
         private bool _matchType = true;
+        private bool _matchMethod = true;
         private bool _matchField = true;
         private bool _matchReference = true;
         private List<MatchObject> _matchObjects = new();
@@ -86,6 +88,7 @@ namespace Unity.VisualScripting.Community
             // find arguments.
             GUILayout.BeginHorizontal();
             _matchType = GUILayout.Toggle(_matchType, "Type", GUILayout.ExpandWidth(false));
+            _matchMethod = GUILayout.Toggle(_matchMethod, "Method", GUILayout.ExpandWidth(false));
             _matchField = GUILayout.Toggle(_matchField, "Field", GUILayout.ExpandWidth(false));
             _matchReference = GUILayout.Toggle(_matchReference, "Reference", GUILayout.ExpandWidth(false));
             GUILayout.EndHorizontal();
@@ -176,6 +179,7 @@ namespace Unity.VisualScripting.Community
                 pathNames = prefix + pathNames; //
                 nodePath = nodePath.ParentReference(false);
             }
+
             return pathNames;
         }
 
@@ -268,41 +272,35 @@ namespace Unity.VisualScripting.Community
             // yield direct graphs first.
             foreach (var state in states)
             {
-                if (state is FlowState flowState)
-                {
-                    // check flow graphs
-                    FlowGraph graph = null;
-                    graph = flowState.nest.embed ?? flowState.nest.graph;
+                if (state is not FlowState flowState) continue;
+                // check flow graphs
+                FlowGraph graph = null;
+                graph = flowState.nest.embed ?? flowState.nest.graph;
 
-                    if (graph == null) continue;
-                    yield return (nestParent, null, graph);
-                }
+                if (graph == null) continue;
+                yield return (nestParent, null, graph);
             }
 
             // yield transitions.
             foreach (var transition in transitions)
             {
-                if (transition is FlowStateTransition flowStateTransition)
-                {
-                    FlowGraph graph = null;
-                    graph = flowStateTransition.nest.embed ?? flowStateTransition.nest.graph;
+                if (transition is not FlowStateTransition flowStateTransition) continue;
+                FlowGraph graph = null;
+                graph = flowStateTransition.nest.embed ?? flowStateTransition.nest.graph;
 
-                    if (graph == null) continue;
-                    yield return (nestParent, flowStateTransition, graph);
-                }
+                if (graph == null) continue;
+                yield return (nestParent, flowStateTransition, graph);
             }
 
             // traverse sub states.
             foreach (var subState in states)
             {
-                if (subState is SuperState subSuperState)
+                if (subState is not SuperState subSuperState) continue;
+                var subStateGraph = subSuperState.nest.graph;
+                var subTransitions = subStateGraph.transitions;
+                foreach (var item in GetSubStates(subStateGraph.states, subTransitions, subSuperState, nestParent))
                 {
-                    var subStateGraph = subSuperState.nest.graph;
-                    var subTransitions = subStateGraph.transitions;
-                    foreach (var item in GetSubStates(subStateGraph.states, subTransitions, subSuperState, nestParent))
-                    {
-                        yield return item;
-                    }
+                    yield return item;
                 }
             }
         }
@@ -427,15 +425,29 @@ namespace Unity.VisualScripting.Community
                 {
                     typeName = invoker.invocation.targetType.ToString().Split(".").Last();
                 }
+
+                if (matchWord.IsMatch(typeName))
+                {
+                    matchRecord.Matches.Add(MatchType.Type);
+                }
+
+                try
+                {
+                    if (matchWord.IsMatch(invoker.invocation.methodInfo.Name))
+                    {
+                        matchRecord.Matches.Add(MatchType.Method);
+                    }
+                }
+                catch
+                {
+                    // pass
+                }
             }
 
             matchRecord.FullTypeName = typeName;
 
-            if (matchWord.IsMatch(typeName))
-            {
-                matchRecord.Matches.Add(MatchType.Type);
-            }
 
+            // fit fields
             var fields = unit.GetType()
                 .GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
 
@@ -487,6 +499,11 @@ namespace Unity.VisualScripting.Community
             foreach (var match in list)
             {
                 if (_matchType && match.Matches.Contains(MatchType.Type))
+                {
+                    return true;
+                }
+
+                if (_matchMethod && match.Matches.Contains(MatchType.Method))
                 {
                     return true;
                 }
