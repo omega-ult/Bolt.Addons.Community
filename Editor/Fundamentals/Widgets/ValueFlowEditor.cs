@@ -156,6 +156,20 @@ public sealed class ValueConnectionWidget : UnitConnectionWidget<ValueConnection
 
     private static class Styles
     {
+#if UNITY_2023
+        static Styles()
+        {
+            prediction = new GUIStyle(EditorStyles.label);
+            prediction.normal.textColor = Color.white;
+            prediction.fontSize = 12;
+            // prediction.normal.background = new Color(0, 0, 0, 0.25f).GetPixel();
+            prediction.padding = new RectOffset(4, 8, 3, 3);
+            prediction.margin = new RectOffset(0, 0, 0, 0);
+            prediction.alignment = TextAnchor.MiddleCenter;
+        }
+
+        public static readonly GUIStyle prediction;
+#else
         static Styles()
         {
             prediction = new GUIStyle(EditorStyles.label);
@@ -168,5 +182,6 @@ public sealed class ValueConnectionWidget : UnitConnectionWidget<ValueConnection
         }
 
         public static readonly GUIStyle prediction;
+#endif
     }
 }
