@@ -162,7 +162,7 @@ public sealed class ValueConnectionWidget : UnitConnectionWidget<ValueConnection
             prediction.normal.textColor = Color.white;
             prediction.fontSize = 12;
             prediction.normal.background = new Color(0, 0, 0, 0.5f).GetPixel();
-            prediction.padding = new RectOffset(0, 2, 0, 0);
+            prediction.padding = new RectOffset(0, 0, 0, 0);
             prediction.margin = new RectOffset(0, 0, 0, 0);
             prediction.alignment = TextAnchor.MiddleCenter;
         }
