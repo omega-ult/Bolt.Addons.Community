@@ -60,7 +60,7 @@ namespace Unity.VisualScripting.Community
             });
             Exit = ControlOutput(nameof(Exit));
             Enabled = ValueInput<bool>(nameof(Enabled), true).AllowsNull();
-            LogObject = ValueInput<object>(nameof(LogObject)).AllowsNull();
+            LogObject = ValueInput<object>(nameof(LogObject), null).AllowsNull();
             Succession(Enter, Exit);
         }
 
