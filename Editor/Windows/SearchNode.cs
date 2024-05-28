@@ -418,7 +418,6 @@ namespace Unity.VisualScripting.Community
             };
             // brutal force to create, this can be optimized, but when?
             // match type name.
-            var fitField = false;
             var typeName = unit.GetType().ToString().Split(".").Last();
             if (unit is InvokeMember invoker)
             {
@@ -432,11 +431,6 @@ namespace Unity.VisualScripting.Community
                     matchRecord.Matches.Add(MatchType.Type);
                 }
 
-                if (matchWord.IsMatch(invoker.invocation.name))
-                {
-                    matchRecord.Matches.Add(MatchType.Field);
-                    fitField = true;
-                }
 
                 try
                 {
@@ -457,6 +451,7 @@ namespace Unity.VisualScripting.Community
             // fit fields
             var fields = unit.GetType()
                 .GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+            var fitField = false;
 
             // var fitStrings = new List<string>();
 
@@ -482,7 +477,31 @@ namespace Unity.VisualScripting.Community
                     var serializedValue = value.ToString();
                     if (!matchWord.IsMatch(serializedValue)) continue;
                     matchRecord.Matches.Add(MatchType.Field);
+                    fitField = true;
                     break;
+                }
+            }
+
+            if (!fitField)
+            {
+                if (unit is GetMember getMember)
+                {
+                    if (matchWord.IsMatch(getMember.member.name))
+                    {
+                        matchRecord.Matches.Add(MatchType.Field);
+                        fitField = true;
+                    }
+                }
+            }
+            if (!fitField)
+            {
+                if (unit is SetMember setMember)
+                {
+                    if (matchWord.IsMatch(setMember.member.name))
+                    {
+                        matchRecord.Matches.Add(MatchType.Field);
+                        fitField = true;
+                    }
                 }
             }
 
