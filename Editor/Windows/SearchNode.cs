@@ -418,6 +418,7 @@ namespace Unity.VisualScripting.Community
             };
             // brutal force to create, this can be optimized, but when?
             // match type name.
+            var fitField = false;
             var typeName = unit.GetType().ToString().Split(".").Last();
             if (unit is InvokeMember invoker)
             {
@@ -429,6 +430,12 @@ namespace Unity.VisualScripting.Community
                 if (matchWord.IsMatch(typeName))
                 {
                     matchRecord.Matches.Add(MatchType.Type);
+                }
+
+                if (matchWord.IsMatch(invoker.invocation.name))
+                {
+                    matchRecord.Matches.Add(MatchType.Field);
+                    fitField = true;
                 }
 
                 try
@@ -451,7 +458,6 @@ namespace Unity.VisualScripting.Community
             var fields = unit.GetType()
                 .GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
 
-            var fitField = false;
             // var fitStrings = new List<string>();
 
             // try read serialized members
