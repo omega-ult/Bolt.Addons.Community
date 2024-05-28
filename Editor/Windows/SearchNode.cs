@@ -109,6 +109,8 @@ namespace Unity.VisualScripting.Community
                 // GUILayout.Label(key.name);
                 foreach (var match in list)
                 {
+                    // if(match.Unit)
+                    if (match.Unit.graph == null) continue;
                     var pathNames = GetUnitPath(match.Reference);
                     var label = $"      {pathNames} : {match.FullTypeName}";
                     if (GUILayout.Button(label, EditorStyles.linkLabel))
@@ -493,6 +495,7 @@ namespace Unity.VisualScripting.Community
                     }
                 }
             }
+
             if (!fitField)
             {
                 if (unit is SetMember setMember)
