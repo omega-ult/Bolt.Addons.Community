@@ -7,6 +7,7 @@ using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using NUnit.Framework;
 using Object = UnityEngine.Object;
 
 namespace Unity.VisualScripting.Community
@@ -29,6 +30,7 @@ namespace Unity.VisualScripting.Community
             public StateGraphAsset StateGraphAsset;
             public GraphReference Reference;
             public string FullTypeName;
+            public string MatchString;
             public IUnit Unit;
         }
 
@@ -112,7 +114,7 @@ namespace Unity.VisualScripting.Community
                     // if(match.Unit)
                     if (match.Unit.graph == null) continue;
                     var pathNames = GetUnitPath(match.Reference);
-                    var label = $"      {pathNames} : {match.FullTypeName}";
+                    var label = $"      {pathNames}{match.FullTypeName} : {match.MatchString}";
                     if (GUILayout.Button(label, EditorStyles.linkLabel))
                     {
                         FocusMatchObject(match);
@@ -137,7 +139,7 @@ namespace Unity.VisualScripting.Community
                     // var parents = match.StateParents.Select(x => x == null ? "" : x.nest.graph.title).ToList();
                     // parents.Add(match.FlowGraph.title);
                     var pathNames = GetUnitPath(match.Reference);
-                    var label = $"      {pathNames} : {match.FullTypeName}";
+                    var label = $"      {pathNames}{match.FullTypeName} : {match.MatchString}";
                     if (GUILayout.Button(label, EditorStyles.linkLabel))
                     {
                         FocusMatchObject(match);
@@ -431,6 +433,7 @@ namespace Unity.VisualScripting.Community
                 if (matchWord.IsMatch(typeName))
                 {
                     matchRecord.Matches.Add(MatchType.Type);
+                    matchRecord.MatchString = typeName;
                 }
 
 
@@ -439,6 +442,7 @@ namespace Unity.VisualScripting.Community
                     if (matchWord.IsMatch(invoker.invocation.methodInfo.Name))
                     {
                         matchRecord.Matches.Add(MatchType.Method);
+                        matchRecord.MatchString = invoker.invocation.methodInfo.Name;
                     }
                 }
                 catch
@@ -465,6 +469,7 @@ namespace Unity.VisualScripting.Community
                 var serializedValue = value.ToString();
                 if (!matchWord.IsMatch(serializedValue)) continue;
                 matchRecord.Matches.Add(MatchType.Field);
+                matchRecord.MatchString = serializedValue;
                 fitField = true;
                 break;
             }
@@ -479,6 +484,7 @@ namespace Unity.VisualScripting.Community
                     var serializedValue = value.ToString();
                     if (!matchWord.IsMatch(serializedValue)) continue;
                     matchRecord.Matches.Add(MatchType.Field);
+                    matchRecord.MatchString = serializedValue;
                     fitField = true;
                     break;
                 }
@@ -491,6 +497,7 @@ namespace Unity.VisualScripting.Community
                     if (matchWord.IsMatch(getMember.member.name))
                     {
                         matchRecord.Matches.Add(MatchType.Field);
+                        matchRecord.MatchString = getMember.member.name;
                         fitField = true;
                     }
                 }
@@ -503,6 +510,7 @@ namespace Unity.VisualScripting.Community
                     if (matchWord.IsMatch(setMember.member.name))
                     {
                         matchRecord.Matches.Add(MatchType.Field);
+                        matchRecord.MatchString = setMember.member.name;
                         fitField = true;
                     }
                 }
@@ -516,6 +524,7 @@ namespace Unity.VisualScripting.Community
                 if (!matchWord.IsMatch(aPath)) continue;
 
                 matchRecord.Matches.Add(MatchType.Reference);
+                matchRecord.MatchString = aPath;
                 break;
             }
 
