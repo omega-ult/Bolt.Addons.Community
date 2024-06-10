@@ -437,17 +437,10 @@ namespace Unity.VisualScripting.Community
                 }
 
 
-                try
+                if (matchWord.IsMatch(invoker.invocation.name))
                 {
-                    if (matchWord.IsMatch(invoker.invocation.methodInfo.Name))
-                    {
-                        matchRecord.Matches.Add(MatchType.Method);
-                        matchRecord.MatchString = invoker.invocation.methodInfo.Name;
-                    }
-                }
-                catch
-                {
-                    // pass
+                    matchRecord.Matches.Add(MatchType.Method);
+                    matchRecord.MatchString = invoker.invocation.name;
                 }
             }
 
