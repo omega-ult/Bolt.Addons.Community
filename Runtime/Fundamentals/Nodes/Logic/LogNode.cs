@@ -95,11 +95,11 @@ namespace Unity.VisualScripting.Community
 
             switch (type) 
             {
-                case LogType.Log: Debug.Log(string.Format(flow.GetValue<string>(format), stringArgs.ToArray()));
+                case LogType.Log: Debug.Log(string.Format(flow.GetValue<string>(format), stringArgs.ToArray()), flow.stack.gameObject);
                     break;
-                case LogType.Warning: Debug.LogWarning(string.Format(flow.GetValue<string>(format), stringArgs.ToArray()));
+                case LogType.Warning: Debug.LogWarning(string.Format(flow.GetValue<string>(format), stringArgs.ToArray()), flow.stack.gameObject);
                     break;
-                case LogType.Error: Debug.LogError(string.Format(flow.GetValue<string>(format), stringArgs.ToArray()));
+                case LogType.Error: Debug.LogError(string.Format(flow.GetValue<string>(format), stringArgs.ToArray()), flow.stack.gameObject);
                     break;
             }
             return output;
