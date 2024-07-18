@@ -18,7 +18,7 @@ namespace Unity.VisualScripting.Community
         [DoNotSerialize] [PortLabelHidden] public ControlOutput Exit { get; private set; }
 
         [DoNotSerialize] public ValueInput Enabled { get; private set; }
-        [DoNotSerialize] public ValueInput LogObject { get; private set; }
+        // [DoNotSerialize] [AllowsNull] public ValueInput LogObject { get; private set; }
 
 
         [DoNotSerialize] [UnitHeaderInspectable] [NodeButton("TriggerButton", "Continue")]
@@ -42,17 +42,8 @@ namespace Unity.VisualScripting.Community
             {
                 var enabled = flow.GetValue<bool>(Enabled);
                 if (enabled)
-                {
-                    var logObject = flow.GetValue(LogObject);
-                    if (logObject == null)
-                    {
-                        Debug.Log("Break point hit.", flow.stack.gameObject);
-                    }
-                    else
-                    {
-                        Debug.Log(logObject, flow.stack.gameObject);
-                    }
-
+                { 
+                    Debug.LogError("Break point hit.", flow.stack.gameObject);
                     PauseEditor();
                 }
 
@@ -60,7 +51,7 @@ namespace Unity.VisualScripting.Community
             });
             Exit = ControlOutput(nameof(Exit));
             Enabled = ValueInput<bool>(nameof(Enabled), true).AllowsNull();
-            LogObject = ValueInput<object>(nameof(LogObject), null).AllowsNull();
+            // LogObject = ValueInput<object>(nameof(LogObject), null).AllowsNull();
             Succession(Enter, Exit);
         }
 
