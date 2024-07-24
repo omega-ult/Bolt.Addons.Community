@@ -67,8 +67,8 @@ namespace Unity.VisualScripting.Community
         /// <summary>
         /// The Control Output invoked immediately after we trigger the return. If the Return Event returns within the same frame, Complete will happen after this port is triggered.
         /// </summary>
-        // [DoNotSerialize]
-        // public ControlOutput returned;
+        [DoNotSerialize]
+        public ControlOutput exit;
 
         /// <summary>
         /// The Control Output port to invoke or run when the event has been returned from.
@@ -111,10 +111,10 @@ namespace Unity.VisualScripting.Community
                 Requirement(input, enter);
             }
 
-            // returned = ControlOutput(nameof(returned));
+            exit = ControlOutput(nameof(exit));
             value = ValueOutput<object>(nameof(value), GetValue);
             
-            // Succession(enter, returned);
+            Succession(enter, exit);
             Requirement(name, enter);
             if (!global) Requirement(target, enter);
             Succession(enter, trigger);
@@ -131,7 +131,7 @@ namespace Unity.VisualScripting.Community
             argumentList.AddRange(arguments.Select(new System.Func<ValueInput, object>(flow.GetConvertedValue)));
             ReturnEvent.Trigger(this, global ? (GameObject)null : flow.GetValue<GameObject>(target), flow.GetValue<string>(name), global, argumentList.ToArray());
           
-            return null;
+            return exit;
         }
 
         /// <summary>
