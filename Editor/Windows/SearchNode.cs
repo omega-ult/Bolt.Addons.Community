@@ -72,7 +72,13 @@ namespace Unity.VisualScripting.Community
         {
             // e = Event.current;
             Event e = Event.current;
-            if (e.keyCode == KeyCode.Return) Search();
+            if (e.keyCode == KeyCode.Return)
+            {
+                if (_pattern.Length > 1)
+                {
+                    Search();
+                }
+            }
 
             GUILayout.BeginHorizontal();
             GUILayout.Label("Find", GUILayout.ExpandWidth(false));
