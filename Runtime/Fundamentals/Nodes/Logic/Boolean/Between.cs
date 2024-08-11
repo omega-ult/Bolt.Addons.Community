@@ -14,7 +14,7 @@
         }
 
         [SerializeAs(nameof(IncludeMin))] private bool _includeMin;
-        [SerializeAs(nameof(IncludeMin))] private bool _includeMax;
+        [SerializeAs(nameof(IncludeMax))] private bool _includeMax;
 
         [DoNotSerialize]
         [Inspectable, UnitHeaderInspectable("IncludeMin")]
