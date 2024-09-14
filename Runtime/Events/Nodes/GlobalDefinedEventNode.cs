@@ -80,6 +80,7 @@ namespace Unity.VisualScripting.Community
 
         protected override bool ShouldTrigger(Flow flow, DefinedEventArgs args)
         {
+            if (eventType == null) return false;
             return args.eventData.GetType() == eventType;
         }
 
@@ -150,7 +151,7 @@ namespace Unity.VisualScripting.Community
         private static EventHook ConstructHook(Type eventType)
         {
             EventHook hook;
-            if (DefinedEventSupport.IsOptimized())
+            if (DefinedEventSupport.IsOptimized() && eventType != null)
                 hook = new EventHook(EventName, tag: eventType.GetTypeInfo().FullName);
             else
                 hook = new EventHook(EventName);
