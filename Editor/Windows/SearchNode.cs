@@ -34,9 +34,11 @@ namespace Unity.VisualScripting.Community
             public IUnit Unit;
         }
 
+        private string _filterGraph = "";
         private string _pattern = "";
 
         private bool _caseSensitive = true;
+        private bool _wordMatch = true;
         private bool _matchType = true;
         private bool _matchMethod = true;
         private bool _matchField = true;
@@ -83,7 +85,10 @@ namespace Unity.VisualScripting.Community
             GUILayout.BeginHorizontal();
             GUILayout.Label("Find", GUILayout.ExpandWidth(false));
             _pattern = GUILayout.TextField(_pattern);
+            GUILayout.Label("In", GUILayout.ExpandWidth(false));
+            _filterGraph = GUILayout.TextField(_filterGraph);
             _caseSensitive = GUILayout.Toggle(_caseSensitive, "MatchCase", GUILayout.ExpandWidth(false));
+            _wordMatch = GUILayout.Toggle(_wordMatch, "MatchWord", GUILayout.ExpandWidth(false));
             if (GUILayout.Button("Search", GUILayout.ExpandWidth(false)))
             {
                 // GraphSearch();
@@ -104,10 +109,14 @@ namespace Unity.VisualScripting.Community
             GUILayout.BeginVertical("box");
             _scrollViewRoot = GUILayout.BeginScrollView(_scrollViewRoot);
 
+            Regex matchFile = null;
+            if (_filterGraph.Length != 0)
+                matchFile = new Regex(_filterGraph, RegexOptions.IgnoreCase);
             var empty = true;
             // for flow graph asset.
             foreach (var key in _sortedScriptGraphKey)
             {
+                if (matchFile != null && !matchFile.IsMatch(key.name)) continue;
                 var list = _matchScriptGraphMap[key];
                 // check show items
                 if (!ShouldShowItem(list)) continue;
@@ -133,6 +142,7 @@ namespace Unity.VisualScripting.Community
             // for state graph asset.
             foreach (var key in _sortedStateGraphKey)
             {
+                if (matchFile != null && !matchFile.IsMatch(key.name)) continue;
                 var list = _matchStateGraphMap[key];
                 // check show items
                 if (!ShouldShowItem(list)) continue;
@@ -201,8 +211,11 @@ namespace Unity.VisualScripting.Community
             _sortedScriptGraphKey.Clear();
             _matchStateGraphMap.Clear();
             _sortedStateGraphKey.Clear();
+            var pattern = _pattern;
+            if (_wordMatch)
+                pattern = $@"\b{Regex.Escape(pattern)}\b";
 
-            var matchWord = new Regex(_pattern, _caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
+            var matchWord = new Regex(pattern, _caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
             // for script graphs.
             // begin of script graph
             var guids = AssetDatabase.FindAssets("t:ScriptGraphAsset", null);
