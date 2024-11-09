@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting.Community.Utility;
@@ -20,6 +21,10 @@ namespace Unity.VisualScripting.Community
         [DoNotSerialize] public ValueInput Enabled { get; private set; }
         // [DoNotSerialize] [AllowsNull] public ValueInput LogObject { get; private set; }
 
+        [Serialize]
+        [Inspectable, UnitHeaderInspectable("Exception")]
+        [InspectorToggleLeft]
+        public bool throwException { get; set; }
 
         [DoNotSerialize] [UnitHeaderInspectable] [NodeButton("TriggerButton", "Continue")]
         public NodeButton triggerButton;
@@ -42,8 +47,17 @@ namespace Unity.VisualScripting.Community
             {
                 var enabled = flow.GetValue<bool>(Enabled);
                 if (enabled)
-                { 
-                    Debug.LogError("Break point hit.", flow.stack.gameObject);
+                {
+#if UNITY_EDITOR
+                    if (throwException)
+                    {
+                        throw new Exception("Break point hit");
+                    }
+                    else
+#endif
+                    {
+                        Debug.LogError("Break point hit.", flow.stack.gameObject);
+                    }
                     PauseEditor();
                 }
 
