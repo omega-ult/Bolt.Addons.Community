@@ -126,16 +126,13 @@ namespace Unity.VisualScripting.Community
                 {
                     var outputPort = outputPorts[i];
                     var key = outputPort.key;
-                    if (Info.reflectedFields.ContainsKey(key))
+                    if (Info.reflectedFields.TryGetValue(key, out var field))
                     {
-                        var reflectedField = Info.reflectedFields[key];
-
-                        flow.SetValue(outputPort, reflectedField.GetValue(args.eventData));
+                        flow.SetValue(outputPort, field.GetValue(args.eventData));
                     }
-                    else if (Info.reflectedProperties.ContainsKey(key))
+                    else if (Info.reflectedProperties.TryGetValue(key, out var property))
                     {
-                        var reflectedProperty = Info.reflectedProperties[key];
-                        flow.SetValue(outputPort, reflectedProperty.GetValue(args.eventData));
+                        flow.SetValue(outputPort, property.GetValue(args.eventData));
                     }
                 }
             }
