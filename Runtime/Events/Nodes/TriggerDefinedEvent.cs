@@ -170,15 +170,13 @@ namespace Unity.VisualScripting.Community
                     var inputPort = inputPorts[i];
                     var key = inputPort.key;
                     var value = flow.GetValue(inputPort);
-                    if (Info.reflectedFields.ContainsKey(key))
+                    if (Info.reflectedFields.TryGetValue(key, out var field))
                     {
-                        var reflectedField = Info.reflectedFields[key];
-                        reflectedField.SetValue(eventInstance, value);
+                        field.SetValue(eventInstance, ConversionUtility.Convert(value, field.FieldType));
                     }
-                    else if (Info.reflectedProperties.ContainsKey(key))
+                    else if (Info.reflectedProperties.TryGetValue(key, out var property))
                     {
-                        var reflectedProperty = Info.reflectedProperties[key];
-                        reflectedProperty.SetValue(eventInstance, value);
+                        property.SetValue(eventInstance, ConversionUtility.Convert(value, property.PropertyType));
                     }
                 }
             }
