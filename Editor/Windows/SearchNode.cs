@@ -6,8 +6,11 @@ using System.Text.RegularExpressions;
 using System.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
+using DocumentFormat.OpenXml.Bibliography;
 using NUnit.Framework;
+using Unity.VisualScripting.Community.Libraries.Humility;
 using Object = UnityEngine.Object;
 
 namespace Unity.VisualScripting.Community
@@ -23,7 +26,7 @@ namespace Unity.VisualScripting.Community
             Reference
         }
 
-        class MatchObject
+        class MatchUnit
         {
             public List<MatchType> Matches;
             public ScriptGraphAsset ScriptGraphAsset;
@@ -32,6 +35,18 @@ namespace Unity.VisualScripting.Community
             public string FullTypeName;
             public string MatchString;
             public IUnit Unit;
+            public string AssetName => ScriptGraphAsset != null ? ScriptGraphAsset.name : StateGraphAsset.name;
+        }
+
+        // only match reference
+        class MatchGraph
+        {
+            public ScriptGraphAsset ScriptGraphAsset;
+            public StateGraphAsset StateGraphAsset;
+            public GraphReference Reference;
+            public string MatchString;
+            public Graph Graph;
+            public string AssetName => ScriptGraphAsset != null ? ScriptGraphAsset.name : StateGraphAsset.name;
         }
 
         private string _filterGraph = "";
@@ -43,10 +58,12 @@ namespace Unity.VisualScripting.Community
         private bool _matchMethod = true;
         private bool _matchField = true;
         private bool _matchReference = true;
-        private List<MatchObject> _matchObjects = new();
-        private Dictionary<ScriptGraphAsset, List<MatchObject>> _matchScriptGraphMap = new();
+        private bool _showGraph = true;
+        private List<MatchUnit> _matchObjects = new();
+        private List<MatchGraph> _matchGraph = new();
+        private Dictionary<ScriptGraphAsset, List<MatchUnit>> _matchScriptGraphMap = new();
         private List<ScriptGraphAsset> _sortedScriptGraphKey = new();
-        private Dictionary<StateGraphAsset, List<MatchObject>> _matchStateGraphMap = new();
+        private Dictionary<StateGraphAsset, List<MatchUnit>> _matchStateGraphMap = new();
         private List<StateGraphAsset> _sortedStateGraphKey = new();
 
 
@@ -64,6 +81,7 @@ namespace Unity.VisualScripting.Community
         private void OnDisable()
         {
             _matchObjects.Clear();
+            _matchGraph.Clear();
             _matchScriptGraphMap.Clear();
             _sortedScriptGraphKey.Clear();
             _matchStateGraphMap.Clear();
@@ -87,8 +105,8 @@ namespace Unity.VisualScripting.Community
             _pattern = GUILayout.TextField(_pattern);
             GUILayout.Label("In", GUILayout.ExpandWidth(false));
             _filterGraph = GUILayout.TextField(_filterGraph);
-            _caseSensitive = GUILayout.Toggle(_caseSensitive, "MatchCase", GUILayout.ExpandWidth(false));
-            _wordMatch = GUILayout.Toggle(_wordMatch, "MatchWord", GUILayout.ExpandWidth(false));
+            _caseSensitive = GUILayout.Toggle(_caseSensitive, "Case", GUILayout.ExpandWidth(false));
+            _wordMatch = GUILayout.Toggle(_wordMatch, "Word", GUILayout.ExpandWidth(false));
             if (GUILayout.Button("Search", GUILayout.ExpandWidth(false)))
             {
                 // GraphSearch();
@@ -104,6 +122,7 @@ namespace Unity.VisualScripting.Community
             _matchMethod = GUILayout.Toggle(_matchMethod, "Method", GUILayout.ExpandWidth(false));
             _matchField = GUILayout.Toggle(_matchField, "Field", GUILayout.ExpandWidth(false));
             _matchReference = GUILayout.Toggle(_matchReference, "Reference", GUILayout.ExpandWidth(false));
+            _showGraph = GUILayout.Toggle(_showGraph, "Graph", GUILayout.ExpandWidth(false));
             GUILayout.EndHorizontal();
 
             GUILayout.BeginVertical("box");
@@ -132,7 +151,7 @@ namespace Unity.VisualScripting.Community
                     var label = $"      {pathNames}{match.FullTypeName} : {match.MatchString}";
                     if (GUILayout.Button(label, EditorStyles.linkLabel))
                     {
-                        FocusMatchObject(match);
+                        FocusMatchUnit(match);
                     }
                 }
 
@@ -158,12 +177,38 @@ namespace Unity.VisualScripting.Community
                     var label = $"      {pathNames}{match.FullTypeName} : {match.MatchString}";
                     if (GUILayout.Button(label, EditorStyles.linkLabel))
                     {
-                        FocusMatchObject(match);
+                        FocusMatchUnit(match);
                     }
                 }
 
                 empty = false;
             }
+
+            if (_showGraph)
+            {
+                foreach (var item in _matchGraph)
+                {
+                    EditorGUIUtility.SetIconSize(new Vector2(16, 16));
+                    if (item.ScriptGraphAsset != null)
+                    {
+                        var icon = EditorGUIUtility.ObjectContent(item.ScriptGraphAsset, typeof(ScriptGraphAsset));
+                        GUILayout.Label(icon);
+                    }
+                    else
+                    {
+                        var icon = EditorGUIUtility.ObjectContent(item.StateGraphAsset, typeof(StateGraphAsset));
+                        GUILayout.Label(icon);
+                    }
+
+                    if (GUILayout.Button($"      {item.AssetName}", EditorStyles.linkLabel))
+                    {
+                        FocusMatchGraph(item);
+                    }
+
+                    empty = false;
+                }
+            }
+
 
             if (empty)
             {
@@ -207,6 +252,7 @@ namespace Unity.VisualScripting.Community
         private void Search()
         {
             _matchObjects.Clear();
+            _matchGraph.Clear();
             _matchScriptGraphMap.Clear();
             _sortedScriptGraphKey.Clear();
             _matchStateGraphMap.Clear();
@@ -226,11 +272,11 @@ namespace Unity.VisualScripting.Community
                 var asset = AssetDatabase.LoadAssetAtPath<ScriptGraphAsset>(assetPath);
                 if (asset.GetReference().graph is not FlowGraph flowGraph) continue;
                 var baseRef = asset.GetReference().AsReference();
-                foreach (var element in TraverseFlowGraph(baseRef))
+                foreach (var element in TraverseFlowGraphUnit(baseRef))
                 {
                     var reference = element.Item1;
                     var unit = element.Item2;
-                    var newMatch = MatchUnit(matchWord, unit);
+                    var newMatch = CheckMatchUnit(matchWord, unit);
                     if (newMatch == null) continue;
                     newMatch.ScriptGraphAsset = asset;
                     newMatch.Reference = reference;
@@ -240,8 +286,26 @@ namespace Unity.VisualScripting.Community
                     }
                     else
                     {
-                        _matchScriptGraphMap[newMatch.ScriptGraphAsset] = new List<MatchObject>() { newMatch };
+                        _matchScriptGraphMap[newMatch.ScriptGraphAsset] = new List<MatchUnit>() { newMatch };
                     }
+                }
+
+                // add self first
+                var baseMatch = CheckMatchGraph(matchWord, flowGraph, assetPath);
+                if (baseMatch != null)
+                {
+                    baseMatch.ScriptGraphAsset = asset;
+                    baseMatch.Reference = baseRef;
+                    _matchGraph.Add(baseMatch);
+                }
+
+                foreach (var (reference, graph) in TraverseFlowGraph(baseRef))
+                {
+                    var newMatch = CheckMatchGraph(matchWord, graph, null);
+                    if (newMatch == null) continue;
+                    newMatch.ScriptGraphAsset = asset;
+                    newMatch.Reference = reference;
+                    _matchGraph.Add(newMatch);
                 }
             }
 
@@ -256,12 +320,13 @@ namespace Unity.VisualScripting.Community
                 var assetPath = AssetDatabase.GUIDToAssetPath(guid);
                 var asset = AssetDatabase.LoadAssetAtPath<StateGraphAsset>(assetPath);
 
+                if (asset.GetReference().graph is not StateGraph stateGraph) continue;
                 var baseRef = asset.GetReference().AsReference();
-                foreach (var element in TraverseStateGraph(baseRef))
+                foreach (var element in TraverseStateGraphUnit(baseRef))
                 {
                     var reference = element.Item1;
                     var unit = element.Item2;
-                    var newMatch = MatchUnit(matchWord, unit);
+                    var newMatch = CheckMatchUnit(matchWord, unit);
                     if (newMatch == null) continue;
                     newMatch.StateGraphAsset = asset;
                     newMatch.Reference = reference;
@@ -272,63 +337,38 @@ namespace Unity.VisualScripting.Community
                     }
                     else
                     {
-                        _matchStateGraphMap[newMatch.StateGraphAsset] = new List<MatchObject>() { newMatch };
+                        _matchStateGraphMap[newMatch.StateGraphAsset] = new List<MatchUnit>() { newMatch };
                     }
+                }
+
+                // add self first
+                var baseMatch = CheckMatchGraph(matchWord, stateGraph, assetPath);
+                if (baseMatch != null)
+                {
+                    baseMatch.StateGraphAsset = asset;
+                    baseMatch.Reference = baseRef;
+                    _matchGraph.Add(baseMatch);
+                }
+                foreach (var (reference, graph) in TraverseStateGraph(baseRef))
+                {
+                    var newMatch = CheckMatchGraph(matchWord, graph, null);
+                    if (newMatch == null) continue;
+                    newMatch.StateGraphAsset = asset;
+                    newMatch.Reference = reference;
+                    _matchGraph.Add(newMatch);
                 }
             }
 
             _sortedStateGraphKey = _matchStateGraphMap.Keys.ToList();
             _sortedStateGraphKey.Sort((a, b) => String.Compare(a.name, b.name, StringComparison.Ordinal));
+
+            _matchGraph.Sort((a, b) =>
+                String.Compare(a.AssetName, b.AssetName, StringComparison.Ordinal));
         }
 
-        IEnumerable<(List<SuperState>, FlowStateTransition, FlowGraph)> GetSubStates(
-            GraphElementCollection<IState> states,
-            GraphConnectionCollection<IStateTransition, IState, IState> transitions,
-            SuperState parent,
-            List<SuperState> nestParent)
-        {
-            nestParent = new List<SuperState>(nestParent);
-            nestParent.Add(parent);
 
-
-            // var stateGraph = states.nest.graph;
-            // yield direct graphs first.
-            foreach (var state in states)
-            {
-                if (state is not FlowState flowState) continue;
-                // check flow graphs
-                FlowGraph graph = null;
-                graph = flowState.nest.embed ?? flowState.nest.graph;
-
-                if (graph == null) continue;
-                yield return (nestParent, null, graph);
-            }
-
-            // yield transitions.
-            foreach (var transition in transitions)
-            {
-                if (transition is not FlowStateTransition flowStateTransition) continue;
-                FlowGraph graph = null;
-                graph = flowStateTransition.nest.embed ?? flowStateTransition.nest.graph;
-
-                if (graph == null) continue;
-                yield return (nestParent, flowStateTransition, graph);
-            }
-
-            // traverse sub states.
-            foreach (var subState in states)
-            {
-                if (subState is not SuperState subSuperState) continue;
-                var subStateGraph = subSuperState.nest.graph;
-                var subTransitions = subStateGraph.transitions;
-                foreach (var item in GetSubStates(subStateGraph.states, subTransitions, subSuperState, nestParent))
-                {
-                    yield return item;
-                }
-            }
-        }
-
-        IEnumerable<(GraphReference, Unit)> TraverseFlowGraph(GraphReference graphReference)
+        // for graph node only
+        IEnumerable<(GraphReference, Graph)> TraverseFlowGraph(GraphReference graphReference)
         {
             var flowGraph = graphReference.graph as FlowGraph;
             if (flowGraph == null) yield break;
@@ -343,7 +383,7 @@ namespace Unity.VisualScripting.Community
                     {
                         var subGraph = subgraphUnit.nest.embed ?? subgraphUnit.nest.graph;
                         if (subGraph == null) continue;
-                        // find sub graph.
+                        yield return (graphReference, subGraph);
                         var childReference = graphReference.ChildReference(subgraphUnit, false);
                         foreach (var item in TraverseFlowGraph(childReference))
                         {
@@ -356,7 +396,7 @@ namespace Unity.VisualScripting.Community
                     {
                         var stateGraph = stateUnit.nest.embed ?? stateUnit.nest.graph;
                         if (stateGraph == null) continue;
-                        // find state graph.
+                        yield return (graphReference, stateGraph);
                         var childReference = graphReference.ChildReference(stateUnit, false);
                         foreach (var item in TraverseStateGraph(childReference))
                         {
@@ -365,14 +405,12 @@ namespace Unity.VisualScripting.Community
 
                         break;
                     }
-                    default:
-                        yield return (graphReference, unit);
-                        break;
                 }
             }
         }
 
-        IEnumerable<(GraphReference, Unit)> TraverseStateGraph(GraphReference graphReference)
+        // for graph node only
+        IEnumerable<(GraphReference, Graph)> TraverseStateGraph(GraphReference graphReference)
         {
             var stateGraph = graphReference.graph as StateGraph;
             if (stateGraph == null) yield break;
@@ -387,8 +425,8 @@ namespace Unity.VisualScripting.Community
                     {
                         // check flow graphs, which is the base of a state.
                         var graph = flowState.nest.embed ?? flowState.nest.graph;
-
                         if (graph == null) continue;
+                        yield return (graphReference, graph);
                         var childReference = graphReference.ChildReference(flowState, false);
                         foreach (var item in TraverseFlowGraph(childReference))
                         {
@@ -402,6 +440,7 @@ namespace Unity.VisualScripting.Community
                         // check state graphs
                         var subStateGraph = superState.nest.embed ?? superState.nest.graph;
                         if (subStateGraph == null) continue;
+                        yield return (graphReference, subStateGraph);
                         var childReference = graphReference.ChildReference(superState, false);
                         foreach (var item in TraverseStateGraph(childReference))
                         {
@@ -421,6 +460,7 @@ namespace Unity.VisualScripting.Community
                 if (transition is not FlowStateTransition flowStateTransition) continue;
                 var graph = flowStateTransition.nest.embed ?? flowStateTransition.nest.graph;
                 if (graph == null) continue;
+                yield return (graphReference, graph);
                 var childReference = graphReference.ChildReference(flowStateTransition, false);
                 foreach (var item in TraverseFlowGraph(childReference))
                 {
@@ -429,10 +469,146 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-
-        MatchObject MatchUnit(Regex matchWord, Unit unit)
+        IEnumerable<(GraphReference, Unit)> TraverseFlowGraphUnit(GraphReference graphReference)
         {
-            var matchRecord = new MatchObject()
+            var flowGraph = graphReference.graph as FlowGraph;
+            if (flowGraph == null) yield break;
+            var units = flowGraph.units;
+            foreach (var element in units)
+            {
+                var unit = element as Unit;
+                switch (unit)
+                {
+                    // going deep
+                    case SubgraphUnit subgraphUnit:
+                    {
+                        var subGraph = subgraphUnit.nest.embed ?? subgraphUnit.nest.graph;
+                        if (subGraph == null) continue;
+                        // find sub graph.
+                        var childReference = graphReference.ChildReference(subgraphUnit, false);
+                        foreach (var item in TraverseFlowGraphUnit(childReference))
+                        {
+                            yield return item;
+                        }
+
+                        break;
+                    }
+                    case StateUnit stateUnit:
+                    {
+                        var stateGraph = stateUnit.nest.embed ?? stateUnit.nest.graph;
+                        if (stateGraph == null) continue;
+                        // find state graph.
+                        var childReference = graphReference.ChildReference(stateUnit, false);
+                        foreach (var item in TraverseStateGraphUnit(childReference))
+                        {
+                            yield return item;
+                        }
+
+                        break;
+                    }
+                    default:
+                        yield return (graphReference, unit);
+                        break;
+                }
+            }
+        }
+
+        IEnumerable<(GraphReference, Unit)> TraverseStateGraphUnit(GraphReference graphReference)
+        {
+            var stateGraph = graphReference.graph as StateGraph;
+            if (stateGraph == null) yield break;
+
+            // var stateGraph = states.nest.graph;
+            // yield direct graphs first.
+            foreach (var state in stateGraph.states)
+            {
+                switch (state)
+                {
+                    case FlowState flowState:
+                    {
+                        // check flow graphs, which is the base of a state.
+                        var graph = flowState.nest.embed ?? flowState.nest.graph;
+
+                        if (graph == null) continue;
+                        var childReference = graphReference.ChildReference(flowState, false);
+                        foreach (var item in TraverseFlowGraphUnit(childReference))
+                        {
+                            yield return item;
+                        }
+
+                        break;
+                    }
+                    case SuperState superState:
+                    {
+                        // check state graphs
+                        var subStateGraph = superState.nest.embed ?? superState.nest.graph;
+                        if (subStateGraph == null) continue;
+                        var childReference = graphReference.ChildReference(superState, false);
+                        foreach (var item in TraverseStateGraphUnit(childReference))
+                        {
+                            yield return item;
+                        }
+
+                        break;
+                    }
+                    case AnyState:
+                        continue;
+                }
+            }
+
+            // don't forget transition nodes.
+            foreach (var transition in stateGraph.transitions)
+            {
+                if (transition is not FlowStateTransition flowStateTransition) continue;
+                var graph = flowStateTransition.nest.embed ?? flowStateTransition.nest.graph;
+                if (graph == null) continue;
+                var childReference = graphReference.ChildReference(flowStateTransition, false);
+                foreach (var item in TraverseFlowGraphUnit(childReference))
+                {
+                    yield return item;
+                }
+            }
+        }
+
+        MatchGraph CheckMatchGraph(Regex matchWord, Graph graph, string assetPath = null)
+        {
+            string element = null;
+
+            if (assetPath != null)
+            {
+                var assetName = Path.GetFileNameWithoutExtension(assetPath);
+                if (matchWord.IsMatch(assetName))
+                {
+                    element = assetName;
+                }
+            }
+            else if (graph.title != null && matchWord.IsMatch(graph.title))
+            {
+                element = graph.title;
+            }
+            else if (graph.summary != null && matchWord.IsMatch(graph.summary))
+            {
+                element = graph.summary;
+            }
+
+            if (element != null)
+            {
+                return new MatchGraph()
+                {
+                    ScriptGraphAsset = null,
+                    StateGraphAsset = null,
+                    MatchString = element,
+                    Graph = graph,
+                };
+            }
+
+            return null;
+        }
+
+
+        MatchUnit CheckMatchUnit(Regex matchWord, Unit unit)
+        {
+            var matchRecord = new MatchUnit()
             {
                 Matches = new List<MatchType>(),
                 ScriptGraphAsset = null,
@@ -543,7 +719,7 @@ namespace Unity.VisualScripting.Community
             return matchRecord.Matches.Count > 0 ? matchRecord : null;
         }
 
-        bool ShouldShowItem(IEnumerable<MatchObject> list)
+        bool ShouldShowItem(IEnumerable<MatchUnit> list)
         {
             foreach (var match in list)
             {
@@ -571,12 +747,38 @@ namespace Unity.VisualScripting.Community
             return false;
         }
 
-        void FocusMatchObject(MatchObject match)
+        void FocusMatchGraph(MatchGraph match)
         {
-            var asset = match.ScriptGraphAsset;
-            // Locate
-            EditorGUIUtility.PingObject(asset);
-            Selection.activeObject = asset;
+            if (match.ScriptGraphAsset != null)
+            {
+                EditorGUIUtility.PingObject(match.ScriptGraphAsset);
+                Selection.activeObject = match.ScriptGraphAsset;
+            }
+            else if (match.StateGraphAsset != null)
+            {
+                EditorGUIUtility.PingObject(match.StateGraphAsset);
+                Selection.activeObject = match.StateGraphAsset;
+            }
+            // Locate 
+
+            // open
+            GraphReference reference = match.Reference;
+            GraphWindow.OpenActive(reference);
+        }
+
+        void FocusMatchUnit(MatchUnit match)
+        {
+            if (match.ScriptGraphAsset != null)
+            {
+                EditorGUIUtility.PingObject(match.ScriptGraphAsset);
+                Selection.activeObject = match.ScriptGraphAsset;
+            }
+            else if (match.StateGraphAsset != null)
+            {
+                EditorGUIUtility.PingObject(match.StateGraphAsset);
+                Selection.activeObject = match.StateGraphAsset;
+            }
+            // Locate 
 
             // open
             GraphReference reference = match.Reference;
