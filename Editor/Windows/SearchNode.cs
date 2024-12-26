@@ -147,7 +147,10 @@ namespace Unity.VisualScripting.Community
                     if (match.Unit.graph == null) continue;
                     var pathNames = GetUnitPath(match.Reference);
                     var label = $"      {pathNames}{match.FullTypeName} : {match.MatchString}";
-                    if (GUILayout.Button(label, EditorStyles.linkLabel))
+                    var tex = Icons.Icon(match.Unit.GetType());
+                    var unitIcon = new GUIContent(tex[IconSize.Small]) ;
+                    unitIcon.text = label;
+                    if (GUILayout.Button(unitIcon, EditorStyles.linkLabel))
                     {
                         FocusMatchUnit(match);
                     }
@@ -663,6 +666,7 @@ namespace Unity.VisualScripting.Community
                 {
                     var value = field.GetValue(unit);
                     if (value == null) continue;
+                    if (!value.GetType().IsPrimitive) continue;
                     var serializedValue = value.ToString();
                     if (!matchWord.IsMatch(serializedValue)) continue;
                     matchRecord.Matches.Add(MatchType.Field);

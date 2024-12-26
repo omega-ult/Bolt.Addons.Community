@@ -88,7 +88,7 @@ namespace Unity.VisualScripting.Community
                         {
                             // 用户点击某个按钮时，跳转并高亮显示该文件
                             PingObjectInProject(assetInfo.AssetPath);
-                            var detail = GetDetail(assetInfo.AssetPath);
+                            // var detail = GetDetail(assetInfo.AssetPath);
                             selectedGraphInfo = assetInfo;
                         }
                     }
@@ -141,7 +141,12 @@ namespace Unity.VisualScripting.Community
                     {
                         label += " (" + unit.Meta + ")";
                     }
-                    if (GUILayout.Button(label,
+
+                    var tex = Icons.Icon(unit.Unit.GetType());
+                    var icon = new GUIContent(tex[IconSize.Small]) ;
+                    icon.text = label;
+                    // GUILayout.ic
+                    if (GUILayout.Button(icon,
                             EditorStyles.linkLabel))
                     {
                         FocusMatchObject(unit.Reference, unit.Unit);
@@ -603,6 +608,7 @@ namespace Unity.VisualScripting.Community
                     GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
                 }
 
+                selectedGraphInfo = graphInfo;
                 dirty = true;
             }
             else if (selectedObject != null && selectedObject is GameObject)
@@ -638,6 +644,7 @@ namespace Unity.VisualScripting.Community
                         GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
                     }
 
+                    selectedGraphInfo = graphInfo;
                     dirty = true;
                 }
 
@@ -671,7 +678,7 @@ namespace Unity.VisualScripting.Community
                     {
                         GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
                     }
-
+                    selectedGraphInfo = graphInfo;
                     dirty = true;
                 }
             }
