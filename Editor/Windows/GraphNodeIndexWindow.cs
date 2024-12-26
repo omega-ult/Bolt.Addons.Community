@@ -71,7 +71,7 @@ namespace Unity.VisualScripting.Community
                 }
                 GUILayout.EndHorizontal();
                 // 显示记录的每个 Script Graph 文件
-                var graphPattern = new Regex(_graphFilterString);
+                var graphPattern = new Regex(_graphFilterString, RegexOptions.IgnoreCase);
                 foreach (GraphInfo assetInfo in GraphList)
                 {
                     if (!FilterDisplayGraph(graphPattern, assetInfo)) continue;
