@@ -602,8 +602,7 @@ namespace Unity.VisualScripting.Community
                 GraphList.Insert(0, graphInfo);
                 //alRecentGraphs.Add(graphInfo);
 
-                // 限制最大记录数量（例如最多记录10个）
-                if (GraphList.Count > 10)
+                if (GraphList.Count > historyCount)
                 {
                     GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
                 }
@@ -638,7 +637,6 @@ namespace Unity.VisualScripting.Community
                         GraphList.RemoveAt(intDeleteIndex);
                     GraphList.Insert(0, graphInfo);
 
-                    // 限制最大记录数量（例如最多记录10个）
                     if (GraphList.Count > historyCount)
                     {
                         GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
@@ -673,7 +671,6 @@ namespace Unity.VisualScripting.Community
                         GraphList.RemoveAt(intDeleteIndex);
                     GraphList.Insert(0, graphInfo);
                     
-                    // 限制最大记录数量（例如最多记录10个）
                     if (GraphList.Count > historyCount)
                     {
                         GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
