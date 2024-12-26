@@ -349,6 +349,7 @@ namespace Unity.VisualScripting.Community
                     baseMatch.Reference = baseRef;
                     _matchGraph.Add(baseMatch);
                 }
+
                 foreach (var (reference, graph) in TraverseStateGraph(baseRef))
                 {
                     var newMatch = CheckMatchGraph(matchWord, graph, null);
@@ -620,17 +621,12 @@ namespace Unity.VisualScripting.Community
             var typeName = unit.GetType().ToString().Split(".").Last();
             if (unit is InvokeMember invoker)
             {
-                if (invoker.invocation.targetType != null)
-                {
-                    typeName = invoker.invocation.targetType.ToString().Split(".").Last();
-                }
-
+                typeName = invoker.invocation.targetTypeName;
                 if (matchWord.IsMatch(typeName))
                 {
                     matchRecord.Matches.Add(MatchType.Type);
                     matchRecord.MatchString = typeName;
                 }
-
 
                 if (matchWord.IsMatch(invoker.invocation.name))
                 {
