@@ -39,7 +39,7 @@ namespace Unity.VisualScripting.Community
         Vector2 _unitScrollPosition = Vector2.zero; // 你需要在类的字段中定义这个变量
         Vector2 _graphScrollPosition = Vector2.zero; // 你需要在类的字段中定义这个变量
 
-        [SerializeField] private int historyCount = 50;
+        // [SerializeField] private int historyCount = 50;
 
         [MenuItem("Window/UVS Community/Node Index")]
         public static void Open()
@@ -602,10 +602,10 @@ namespace Unity.VisualScripting.Community
                 GraphList.Insert(0, graphInfo);
                 //alRecentGraphs.Add(graphInfo);
 
-                if (GraphList.Count > historyCount)
-                {
-                    GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
-                }
+                // if (GraphList.Count > historyCount)
+                // {
+                //     GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
+                // }
 
                 selectedGraphInfo = graphInfo;
                 dirty = true;
@@ -637,10 +637,10 @@ namespace Unity.VisualScripting.Community
                         GraphList.RemoveAt(intDeleteIndex);
                     GraphList.Insert(0, graphInfo);
 
-                    if (GraphList.Count > historyCount)
-                    {
-                        GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
-                    }
+                    // if (GraphList.Count > historyCount)
+                    // {
+                    //     GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
+                    // }
 
                     selectedGraphInfo = graphInfo;
                     dirty = true;
@@ -671,10 +671,10 @@ namespace Unity.VisualScripting.Community
                         GraphList.RemoveAt(intDeleteIndex);
                     GraphList.Insert(0, graphInfo);
                     
-                    if (GraphList.Count > historyCount)
-                    {
-                        GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
-                    }
+                    // if (GraphList.Count > historyCount)
+                    // {
+                    //     GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
+                    // }
                     selectedGraphInfo = graphInfo;
                     dirty = true;
                 }
