@@ -8,43 +8,47 @@ using Object = UnityEngine.Object;
 using System.Collections;
 using System.Reflection;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Unity.VisualScripting.Community
 {
-    public class GraphInfo
+    public class NodeIndexWindow : EditorWindow
     {
-        public string Title;
-        public string Meta;
-        public Object Reference;
-        public Type Type;
-        public string AssetPath;
-    }
+        [Serializable]
+        class GraphInfo
+        {
+            public string title;
+            public string meta;
+            public Object reference;
+            public Type type;
+            public string assetPath;
+        }
 
-    class UnitInfo
-    {
-        public GraphReference Reference;
-        public IUnit Unit;
-        public string Name;
-        public string Path;
-        public string Meta;
-    }
+        class UnitInfo
+        {
+            public GraphReference Reference;
+            public IUnit Unit;
+            public string Name;
+            public string Path;
+            public string Meta;
+        }
 
-    public class LastNode : EditorWindow
-    {
-        public List<GraphInfo> GraphList = new();
-        public GraphInfo selectedGraphInfo;
+        [SerializeField] private List<GraphInfo> _graphList = new();
+        private List<GraphInfo> _historyList = new();
+        private GraphInfo _selectedGraphInfo;
         private string _unitFilterString = "";
         private string _graphFilterString = "";
 
-        Vector2 _unitScrollPosition = Vector2.zero; // 你需要在类的字段中定义这个变量
-        Vector2 _graphScrollPosition = Vector2.zero; // 你需要在类的字段中定义这个变量
+        Vector2 _unitScrollPosition = Vector2.zero;
+        Vector2 _graphScrollPosition = Vector2.zero;
+        Vector2 _historyScrollPosition = Vector2.zero;
 
-        // [SerializeField] private int historyCount = 50;
+        [SerializeField] private int historyCount = 50;
 
         [MenuItem("Window/UVS Community/Node Index")]
         public static void Open()
         {
-            var window = GetWindow<LastNode>();
+            var window = GetWindow<NodeIndexWindow>();
             window.titleContent = new GUIContent("Node Index");
         }
 
@@ -52,64 +56,9 @@ namespace Unity.VisualScripting.Community
         {
             GUILayout.BeginHorizontal();
 
-            GUILayout.BeginVertical(GUILayout.Width(200));
-            // GUILayout.
-            // 如果没有记录的 Script Graph 文件，显示提示
-            if (GraphList.Count == 0)
-            {
-                GUILayout.Label("Select any Graph Asset or Prefab to start.");
-            }
-            else
-            {
-                GUILayout.BeginScrollView(_graphScrollPosition,  GUILayout.ExpandHeight(true));
-                GUILayout.BeginHorizontal();
-                GUILayout.Label("Filter", GUILayout.ExpandWidth(false));
-                _graphFilterString = GUILayout.TextField(_graphFilterString);
-                if (GUILayout.Button("x", GUILayout.Width(20)))
-                {
-                    _graphFilterString = "";
-                }
-                GUILayout.EndHorizontal();
-                // 显示记录的每个 Script Graph 文件
-                var graphPattern = new Regex(_graphFilterString, RegexOptions.IgnoreCase);
-                foreach (GraphInfo assetInfo in GraphList)
-                {
-                    if (!FilterDisplayGraph(graphPattern, assetInfo)) continue;
-                    if (assetInfo.Meta.Contains("Graph"))
-                    {
-                        string fileName = System.IO.Path.GetFileNameWithoutExtension(assetInfo.AssetPath);
-
-                        // 使用按钮显示每个 Script Graph 文件路径
-                        EditorGUIUtility.SetIconSize(new Vector2(16, 16));
-                        var icon = EditorGUIUtility.ObjectContent(assetInfo.Reference, assetInfo.Type);
-                        icon.text = fileName;
-                        // GUILayout.Label(icon);
-                        if (GUILayout.Button(icon))
-                        {
-                            // 用户点击某个按钮时，跳转并高亮显示该文件
-                            PingObjectInProject(assetInfo.AssetPath);
-                            // var detail = GetDetail(assetInfo.AssetPath);
-                            selectedGraphInfo = assetInfo;
-                        }
-                    }
-                    else if (assetInfo.Meta.Contains("Embed"))
-                    {
-                        string fileName = assetInfo.AssetPath;
-                        // var gameObject = GameObject.Find(assetInfo.AssetPath);
-                        string gameObjectPath = SceneManager.GetActiveScene().path;
-
-                        // 使用按钮显示每个 Script Graph 文件路径
-                        if (GUILayout.Button(fileName))
-                        {
-                            // 用户点击某个按钮时，跳转并高亮显示该文件
-                            PingObjectInProject(gameObjectPath);
-                            selectedGraphInfo = assetInfo;
-                        }
-                    }
-                }
-                GUILayout.EndScrollView();
-            }
-
+            GUILayout.BeginVertical(GUILayout.Width(250));
+            DrawGraphList();
+            DrawHistory();
             GUILayout.EndVertical();
 
             // 如果有选中的 Script Graph 文件，显示额外信息
@@ -124,11 +73,12 @@ namespace Unity.VisualScripting.Community
             {
                 _unitFilterString = "";
             }
+
             GUILayout.EndHorizontal();
 
 
             _unitScrollPosition = GUILayout.BeginScrollView(_unitScrollPosition, "box", GUILayout.ExpandHeight(true));
-            var units = GetDetailUnit(selectedGraphInfo);
+            var units = GetDetailUnit(_selectedGraphInfo);
             var pattern = new Regex(_unitFilterString, RegexOptions.IgnoreCase);
             foreach (var (path, unitList) in units)
             {
@@ -143,7 +93,7 @@ namespace Unity.VisualScripting.Community
                     }
 
                     var tex = Icons.Icon(unit.Unit.GetType());
-                    var icon = new GUIContent(tex[IconSize.Small]) ;
+                    var icon = new GUIContent(tex[IconSize.Small]);
                     icon.text = label;
                     // GUILayout.ic
                     if (GUILayout.Button(icon,
@@ -162,11 +112,159 @@ namespace Unity.VisualScripting.Community
             GUILayout.EndHorizontal(); // 结束整体布局
         }
 
+        void DrawGraphList()
+        {
+            // GUILayout.
+            // 如果没有记录的 Script Graph 文件，显示提示
+            if (_graphList.Count == 0)
+            {
+                GUILayout.Label("Select any Graph Asset or Prefab to start.");
+            }
+            else
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Filter", GUILayout.ExpandWidth(false));
+                _graphFilterString = GUILayout.TextField(_graphFilterString);
+                if (GUILayout.Button("x", GUILayout.Width(20)))
+                {
+                    _graphFilterString = "";
+                }
+
+                GUILayout.EndHorizontal();
+                GUILayout.BeginScrollView(_graphScrollPosition, GUILayout.ExpandHeight(true));
+                // 显示记录的每个 Script Graph 文件
+                var graphPattern = new Regex(_graphFilterString, RegexOptions.IgnoreCase);
+
+                for (var index = 0; index < _graphList.Count; index++)
+                {
+                    var assetInfo = _graphList[index];
+                    if (!FilterDisplayGraph(graphPattern, assetInfo)) continue;
+
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("x", GUILayout.ExpandWidth(false)))
+                    {
+                        _graphList.RemoveAt(index);
+                        if (_selectedGraphInfo == assetInfo)
+                        {
+                            _selectedGraphInfo = null;
+                        }
+                    }
+
+                    if (assetInfo.meta.Contains("Graph"))
+                    {
+                        string fileName = System.IO.Path.GetFileNameWithoutExtension(assetInfo.assetPath);
+
+                        // 使用按钮显示每个 Script Graph 文件路径
+                        EditorGUIUtility.SetIconSize(new Vector2(16, 16));
+                        var icon = EditorGUIUtility.ObjectContent(assetInfo.reference, assetInfo.type);
+                        icon.text = fileName;
+                        if (GUILayout.Button(icon))
+                        {
+                            // 用户点击某个按钮时，跳转并高亮显示该文件
+                            PingObjectInProject(assetInfo.assetPath);
+                            // var detail = GetDetail(assetInfo.AssetPath);
+                            _selectedGraphInfo = assetInfo;
+                            AddSelectionHistory();
+                        }
+                    }
+                    else if (assetInfo.meta.Contains("Embed"))
+                    {
+                        if (assetInfo.reference == null)
+                        {
+                            _graphList.RemoveAt(index);
+                            if (_selectedGraphInfo == assetInfo)
+                            {
+                                _selectedGraphInfo = null;
+                            }
+
+                            GUILayout.Label("Missing");
+                        }
+                        else
+                        {
+                            string fileName = assetInfo.reference.name;
+                            string gameObjectPath = SceneManager.GetActiveScene().path;
+
+                            // 使用按钮显示每个 Script Graph 文件路径
+                            if (GUILayout.Button(fileName))
+                            {
+                                // 用户点击某个按钮时，跳转并高亮显示该文件
+                                PingObjectInProject(gameObjectPath);
+                                _selectedGraphInfo = assetInfo;
+                                AddSelectionHistory();
+                            }
+                        }
+                    }
+
+                    GUILayout.EndHorizontal();
+                }
+
+
+                GUILayout.EndScrollView();
+            }
+        }
+
+        void DrawHistory()
+        {
+            historyCount = EditorGUILayout.IntField("HistoryCount", historyCount, GUILayout.ExpandHeight(false));
+            _historyScrollPosition =
+            GUILayout.BeginScrollView(_historyScrollPosition, "box", GUILayout.ExpandHeight(false),
+                    GUILayout.MaxHeight(300));
+
+            for (var index = 0; index < _historyList.Count; index++)
+            {
+                var assetInfo = _historyList[index];
+                if (assetInfo.meta.Contains("Graph"))
+                {
+                    string fileName = System.IO.Path.GetFileNameWithoutExtension(assetInfo.assetPath);
+
+                    // 使用按钮显示每个 Script Graph 文件路径
+                    EditorGUIUtility.SetIconSize(new Vector2(16, 16));
+                    var icon = EditorGUIUtility.ObjectContent(assetInfo.reference, assetInfo.type);
+                    icon.text = fileName;
+                    if (GUILayout.Button(icon))
+                    {
+                        // 用户点击某个按钮时，跳转并高亮显示该文件
+                        PingObjectInProject(assetInfo.assetPath);
+                        // var detail = GetDetail(assetInfo.AssetPath);
+                        _selectedGraphInfo = assetInfo;
+                    }
+                }
+                else if (assetInfo.meta.Contains("Embed"))
+                {
+                    if (assetInfo.reference == null)
+                    {
+                        _historyList.RemoveAt(index);
+                        if (_selectedGraphInfo == assetInfo)
+                        {
+                            _selectedGraphInfo = null;
+                        }
+
+                        GUILayout.Label("Missing");
+                    }
+                    else
+                    {
+                        string fileName = assetInfo.reference.name;
+                        string gameObjectPath = SceneManager.GetActiveScene().path;
+
+                        // 使用按钮显示每个 Script Graph 文件路径
+                        if (GUILayout.Button(fileName))
+                        {
+                            // 用户点击某个按钮时，跳转并高亮显示该文件
+                            PingObjectInProject(gameObjectPath);
+                            _selectedGraphInfo = assetInfo;
+                        }
+                    }
+                }
+            }
+            GUILayout.EndScrollView();
+        }
+
         bool FilterDisplayGraph(Regex pattern, GraphInfo graph)
         {
             if (string.IsNullOrEmpty(_graphFilterString)) return true;
-            return pattern.IsMatch(graph.Title);
+            return pattern.IsMatch(graph.title);
         }
+
         bool FilterDisplayUnit(Regex pattern, UnitInfo unit)
         {
             if (string.IsNullOrEmpty(_unitFilterString)) return true;
@@ -240,6 +338,7 @@ namespace Unity.VisualScripting.Community
                         {
                             vName = setVariable.name.connection.source.unit.ToString().Split('#')[0];
                         }
+
                         detail.Meta = $"{setVariable.kind}:{vName}";
                         result.Add(detail);
                         break;
@@ -256,6 +355,7 @@ namespace Unity.VisualScripting.Community
                         {
                             eName = customEvent.name.connection.source.unit.ToString().Split('#')[0];
                         }
+
                         detail.Meta = $"{eName} : [{customEvent.argumentCount}]";
                         result.Add(detail);
                         break;
@@ -272,10 +372,11 @@ namespace Unity.VisualScripting.Community
                         {
                             teName = triggerEvent.name.connection.source.unit.ToString().Split('#')[0];
                         }
+
                         detail.Meta = $"{teName} : [{triggerEvent.argumentCount}]";
                         result.Add(detail);
                         break;
-                    
+
                     case TriggerDefinedEvent triggerDefinedEvent:
                         detail.Meta = $"{triggerDefinedEvent.eventType}";
                         result.Add(detail);
@@ -312,9 +413,9 @@ namespace Unity.VisualScripting.Community
                 return result;
             List<UnitInfo> fetched = null;
 
-            if (graphInfo.Meta.Contains("Graph"))
+            if (graphInfo.meta.Contains("Graph"))
             {
-                var scriptAsset = AssetDatabase.LoadAssetAtPath<ScriptGraphAsset>(graphInfo.AssetPath);
+                var scriptAsset = AssetDatabase.LoadAssetAtPath<ScriptGraphAsset>(graphInfo.assetPath);
                 if (scriptAsset != null)
                 {
                     if (scriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
@@ -322,7 +423,7 @@ namespace Unity.VisualScripting.Community
                     fetched = BuildUnitDetail(TraverseFlowGraph(baseRef));
                 }
 
-                var stateAsset = AssetDatabase.LoadAssetAtPath<StateGraphAsset>(graphInfo.AssetPath);
+                var stateAsset = AssetDatabase.LoadAssetAtPath<StateGraphAsset>(graphInfo.assetPath);
                 if (stateAsset != null)
                 {
                     if (stateAsset.GetReference().graph is not StateGraph stateGraph) return result;
@@ -330,9 +431,9 @@ namespace Unity.VisualScripting.Community
                     fetched = BuildUnitDetail(TraverseStateGraph(baseRef));
                 }
             }
-            else if (graphInfo.Meta.Contains("Embed"))
+            else if (graphInfo.meta.Contains("Embed"))
             {
-                var selectedScriptAsset = GameObject.Find(graphInfo.AssetPath).GetComponentInChildren<ScriptMachine>();
+                var selectedScriptAsset = graphInfo.reference.GetComponentInChildren<ScriptMachine>();
                 if (selectedScriptAsset != null)
                 {
                     if (selectedScriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
@@ -340,10 +441,10 @@ namespace Unity.VisualScripting.Community
                     fetched = BuildUnitDetail(TraverseFlowGraph(baseRef));
                 }
 
-                var selectedStatetAsset = GameObject.Find(graphInfo.AssetPath).GetComponentInChildren<StateMachine>();
-                if (selectedStatetAsset != null)
+                var selectedStateAsset = graphInfo.reference.GetComponentInChildren<StateMachine>();
+                if (selectedStateAsset != null)
                 {
-                    if (selectedStatetAsset.GetReference().graph is not StateGraph stateGraph) return result;
+                    if (selectedStateAsset.GetReference().graph is not StateGraph stateGraph) return result;
                     //ChildReference(flowState, false);
                     var baseRef = selectedScriptAsset.GetReference().AsReference();
                     fetched = BuildUnitDetail(TraverseStateGraph(baseRef));
@@ -562,11 +663,12 @@ namespace Unity.VisualScripting.Community
                 return;
             context.BeginEdit();
             context.canvas?.ViewElements(((IGraphElement)unit).Yield());
+            context.selection.Select(unit);
         }
 
         void SortHistory()
         {
-            GraphList.Sort((GraphInfo x, GraphInfo y) => x.Title.CompareTo(y.Title));
+            _graphList.Sort((GraphInfo x, GraphInfo y) => x.title.CompareTo(y.title));
         }
 
         private void OnSelectionChanged()
@@ -580,35 +682,22 @@ namespace Unity.VisualScripting.Community
             {
                 // 检查扩展名或其他方式来确定是否是 Script Graph 文件
                 string assetPath = AssetDatabase.GetAssetPath(selectedObject);
-                GraphInfo graphInfo = new GraphInfo()
-                {
-                    Title = selectedObject.name,
-                    Meta = "Graph",
-                    Type = selectedObject.GetType(),
-                    Reference = selectedObject,
-                    AssetPath = assetPath
-                };
 
-                int intDeleteIndex = -1;
-                for (int i = 0; i < GraphList.Count; i++)
+                var existed = _graphList.Any(x => x.assetPath.Equals(assetPath));
+                if (!existed)
                 {
-                    GraphInfo info = (GraphInfo)GraphList[i];
-                    if (info.AssetPath.Equals(graphInfo.AssetPath))
-                        intDeleteIndex = i;
+                    var graphInfo = new GraphInfo()
+                    {
+                        title = selectedObject.name,
+                        meta = "Graph",
+                        type = selectedObject.GetType(),
+                        reference = selectedObject,
+                        assetPath = assetPath
+                    };
+                    _graphList.Add(graphInfo);
+                    _selectedGraphInfo = graphInfo;
+                    dirty = true;
                 }
-
-                if (intDeleteIndex != -1)
-                    GraphList.RemoveAt(intDeleteIndex);
-                GraphList.Insert(0, graphInfo);
-                //alRecentGraphs.Add(graphInfo);
-
-                // if (GraphList.Count > historyCount)
-                // {
-                //     GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
-                // }
-
-                selectedGraphInfo = graphInfo;
-                dirty = true;
             }
             else if (selectedObject != null && selectedObject is GameObject)
             {
@@ -616,73 +705,60 @@ namespace Unity.VisualScripting.Community
 
                 if (sm != null)
                 {
-                    GraphInfo graphInfo = new GraphInfo()
+                    var existed = _graphList.Any(x => x.reference.Equals(selectedObject));
+                    if (!existed)
                     {
-                        Title = selectedObject.name,
-                        Meta = "Embed",
-                        Type = typeof(ScriptGraphAsset),
-                        Reference = selectedObject,
-                        AssetPath = selectedObject.name
-                    };
-
-                    int intDeleteIndex = -1;
-                    for (int i = 0; i < GraphList.Count; i++)
-                    {
-                        GraphInfo info = (GraphInfo)GraphList[i];
-                        if (info.AssetPath.Equals(graphInfo.AssetPath))
-                            intDeleteIndex = i;
+                        var graphInfo = new GraphInfo()
+                        {
+                            title = selectedObject.name,
+                            meta = "Embed",
+                            type = typeof(ScriptGraphAsset),
+                            reference = selectedObject,
+                            assetPath = "", //selectedObject.name
+                        };
+                        _graphList.Add(graphInfo);
+                        _selectedGraphInfo = graphInfo;
+                        dirty = true;
                     }
-
-                    if (intDeleteIndex != -1)
-                        GraphList.RemoveAt(intDeleteIndex);
-                    GraphList.Insert(0, graphInfo);
-
-                    // if (GraphList.Count > historyCount)
-                    // {
-                    //     GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
-                    // }
-
-                    selectedGraphInfo = graphInfo;
-                    dirty = true;
                 }
 
                 var state = selectedObject.GetComponent<StateMachine>();
-
                 if (state != null)
                 {
-                    GraphInfo graphInfo = new GraphInfo()
+                    var existed = _graphList.Any(x => x.reference.Equals(selectedObject));
+                    if (!existed)
                     {
-                        Title = selectedObject.name,
-                        Meta = "Embed",
-                        Type = typeof(StateGraphAsset),
-                        Reference = selectedObject,
-                        AssetPath = selectedObject.name
-                    };
-                    
-                    int intDeleteIndex = -1;
-                    for (int i = 0; i < GraphList.Count; i++)
-                    {
-                        GraphInfo info = (GraphInfo)GraphList[i];
-                        if (info.AssetPath.Equals(graphInfo.AssetPath))
-                            intDeleteIndex = i;
+                        var graphInfo = new GraphInfo()
+                        {
+                            title = selectedObject.name,
+                            meta = "Embed",
+                            type = typeof(StateGraphAsset),
+                            reference = selectedObject,
+                            assetPath = "", //selectedObject.name
+                        };
+                        _graphList.Add(graphInfo);
+                        _selectedGraphInfo = graphInfo;
+                        dirty = true;
                     }
-
-                    if (intDeleteIndex != -1)
-                        GraphList.RemoveAt(intDeleteIndex);
-                    GraphList.Insert(0, graphInfo);
-                    
-                    // if (GraphList.Count > historyCount)
-                    // {
-                    //     GraphList.RemoveAt(GraphList.Count - 1); // 删除最后一个
-                    // }
-                    selectedGraphInfo = graphInfo;
-                    dirty = true;
                 }
             }
 
             if (!dirty) return;
+            AddSelectionHistory();
             SortHistory();
             Repaint();
+        }
+
+        void AddSelectionHistory()
+        {
+            if (_selectedGraphInfo != null)
+            {
+                _historyList.Add(_selectedGraphInfo);
+                if (_historyList.Count > historyCount)
+                {
+                    _historyList = _historyList.TakeLast(historyCount).ToList();
+                }
+            }
         }
     }
 }
