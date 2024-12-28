@@ -82,10 +82,12 @@ namespace Unity.VisualScripting.Community
             var pattern = new Regex(_unitFilterString, RegexOptions.IgnoreCase);
             foreach (var (path, unitList) in units)
             {
+                var shownUnits = unitList.Where(x => FilterDisplayUnit(pattern, x));
+                var unitInfos = shownUnits as UnitInfo[] ?? shownUnits.ToArray();
+                if (!unitInfos.Any()) continue;
                 GUILayout.Label(path);
-                foreach (var unit in unitList)
+                foreach (var unit in unitInfos)
                 {
-                    if (!FilterDisplayUnit(pattern, unit)) continue;
                     var label = $"  {unit.Name}";
                     if (!string.IsNullOrEmpty(unit.Meta))
                     {
@@ -97,7 +99,7 @@ namespace Unity.VisualScripting.Community
                     icon.text = label;
                     // GUILayout.ic
                     if (GUILayout.Button(icon,
-                            EditorStyles.linkLabel))
+                            EditorStyles.linkLabel, GUILayout.MaxHeight(IconSize.Small + 4)))
                     {
                         FocusMatchObject(unit.Reference, unit.Unit);
                     }
@@ -446,7 +448,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (selectedStateAsset.GetReference().graph is not StateGraph stateGraph) return result;
                     //ChildReference(flowState, false);
-                    var baseRef = selectedScriptAsset.GetReference().AsReference();
+                    var baseRef = selectedStateAsset.GetReference().AsReference();
                     fetched = BuildUnitDetail(TraverseStateGraph(baseRef));
                 }
             }
