@@ -209,7 +209,7 @@ namespace Unity.VisualScripting.Community
         {
             historyCount = EditorGUILayout.IntField("HistoryCount", historyCount, GUILayout.ExpandHeight(false));
             _historyScrollPosition =
-            GUILayout.BeginScrollView(_historyScrollPosition, "box", GUILayout.ExpandHeight(false),
+                GUILayout.BeginScrollView(_historyScrollPosition, "box", GUILayout.ExpandHeight(false),
                     GUILayout.MaxHeight(300));
 
             for (var index = 0; index < _historyList.Count; index++)
@@ -258,6 +258,7 @@ namespace Unity.VisualScripting.Community
                     }
                 }
             }
+
             GUILayout.EndScrollView();
         }
 
@@ -637,7 +638,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (string.IsNullOrEmpty(nodePath.graph.title))
                     {
-                        prefix = nodePath.graph.GetType().ToString().Split(".").Last();
+                        prefix = nodePath.serializedObject != null ? nodePath.serializedObject.name : nodePath.graph.GetType().ToString().Split(".").Last();
                     }
                     else
                     {

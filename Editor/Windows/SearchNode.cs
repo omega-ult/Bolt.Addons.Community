@@ -232,7 +232,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (string.IsNullOrEmpty(nodePath.graph.title))
                     {
-                        prefix = nodePath.graph.GetType().ToString().Split(".").Last();
+                        prefix = nodePath.serializedObject != null ? nodePath.serializedObject.name : nodePath.graph.GetType().ToString().Split(".").Last();
                     }
                     else
                     {
