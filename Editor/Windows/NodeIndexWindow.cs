@@ -136,6 +136,14 @@ namespace Unity.VisualScripting.Community
                 GUILayout.BeginScrollView(_graphScrollPosition, GUILayout.ExpandHeight(true));
                 // 显示记录的每个 Script Graph 文件
                 var graphPattern = new Regex(_graphFilterString, RegexOptions.IgnoreCase);
+                for (var index = _graphList.Count-1; index >= 0; index--)
+                {
+                    var assetInfo = _graphList[index];
+                    if (assetInfo.reference == null)
+                    {
+                        _graphList.RemoveAt(index);
+                    }
+                }
 
                 for (var index = 0; index < _graphList.Count; index++)
                 {
@@ -434,7 +442,7 @@ namespace Unity.VisualScripting.Community
                     fetched = BuildUnitDetail(TraverseStateGraph(baseRef));
                 }
             }
-            else if (graphInfo.meta.Contains("Embed"))
+            else if (graphInfo.meta.Contains("Embed") && graphInfo.reference != null)
             {
                 var selectedScriptAsset = graphInfo.reference.GetComponentInChildren<ScriptMachine>();
                 if (selectedScriptAsset != null)
@@ -638,7 +646,9 @@ namespace Unity.VisualScripting.Community
                 {
                     if (string.IsNullOrEmpty(nodePath.graph.title))
                     {
-                        prefix = nodePath.serializedObject != null ? nodePath.serializedObject.name : nodePath.graph.GetType().ToString().Split(".").Last();
+                        prefix = nodePath.serializedObject != null
+                            ? nodePath.serializedObject.name
+                            : nodePath.graph.GetType().ToString().Split(".").Last();
                     }
                     else
                     {
