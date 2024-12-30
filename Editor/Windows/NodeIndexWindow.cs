@@ -442,7 +442,7 @@ namespace Unity.VisualScripting.Community
                 if (selectedStateAsset != null && selectedStateAsset.GetReference() != null)
                 {
                     if (selectedStateAsset.GetReference().graph is not StateGraph stateGraph) return result;
-                    var baseRef = selectedScriptAsset.GetReference().AsReference();
+                    var baseRef = selectedStateAsset.GetReference().AsReference();
                     fetched = BuildUnitDetail(TraverseStateGraph(baseRef));
                 }
             }
