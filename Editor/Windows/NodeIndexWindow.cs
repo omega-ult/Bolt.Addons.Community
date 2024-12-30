@@ -94,7 +94,7 @@ namespace Unity.VisualScripting.Community
                     icon.text = label;
                     // GUILayout.ic
                     if (GUILayout.Button(icon,
-                            EditorStyles.linkLabel))
+                            EditorStyles.linkLabel, GUILayout.MaxHeight(IconSize.Small + 4)))
                     {
                         FocusMatchObject(unit.Reference, unit.Unit);
                     }
