@@ -5,10 +5,7 @@ using System;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using Object = UnityEngine.Object;
-using System.Collections;
-using System.Reflection;
 using UnityEngine.SceneManagement;
-using UnityEngine.Serialization;
 
 namespace Unity.VisualScripting.Community
 {
@@ -18,7 +15,7 @@ namespace Unity.VisualScripting.Community
         class GraphInfo
         {
             public string title;
-            public string meta;
+            public string source;
             public Object reference;
             public Type type;
             public string assetPath;
@@ -82,12 +79,10 @@ namespace Unity.VisualScripting.Community
             var pattern = new Regex(_unitFilterString, RegexOptions.IgnoreCase);
             foreach (var (path, unitList) in units)
             {
-                var shownUnits = unitList.Where(x => FilterDisplayUnit(pattern, x));
-                var unitInfos = shownUnits as UnitInfo[] ?? shownUnits.ToArray();
-                if (!unitInfos.Any()) continue;
                 GUILayout.Label(path);
-                foreach (var unit in unitInfos)
+                foreach (var unit in unitList)
                 {
+                    if (!FilterDisplayUnit(pattern, unit)) continue;
                     var label = $"  {unit.Name}";
                     if (!string.IsNullOrEmpty(unit.Meta))
                     {
@@ -99,7 +94,7 @@ namespace Unity.VisualScripting.Community
                     icon.text = label;
                     // GUILayout.ic
                     if (GUILayout.Button(icon,
-                            EditorStyles.linkLabel, GUILayout.MaxHeight(IconSize.Small + 4)))
+                            EditorStyles.linkLabel))
                     {
                         FocusMatchObject(unit.Reference, unit.Unit);
                     }
@@ -136,14 +131,6 @@ namespace Unity.VisualScripting.Community
                 GUILayout.BeginScrollView(_graphScrollPosition, GUILayout.ExpandHeight(true));
                 // 显示记录的每个 Script Graph 文件
                 var graphPattern = new Regex(_graphFilterString, RegexOptions.IgnoreCase);
-                for (var index = _graphList.Count-1; index >= 0; index--)
-                {
-                    var assetInfo = _graphList[index];
-                    if (assetInfo.reference == null)
-                    {
-                        _graphList.RemoveAt(index);
-                    }
-                }
 
                 for (var index = 0; index < _graphList.Count; index++)
                 {
@@ -160,7 +147,7 @@ namespace Unity.VisualScripting.Community
                         }
                     }
 
-                    if (assetInfo.meta.Contains("Graph"))
+                    if (assetInfo.source.Equals("Graph"))
                     {
                         string fileName = System.IO.Path.GetFileNameWithoutExtension(assetInfo.assetPath);
 
@@ -177,7 +164,7 @@ namespace Unity.VisualScripting.Community
                             AddSelectionHistory();
                         }
                     }
-                    else if (assetInfo.meta.Contains("Embed"))
+                    else if (assetInfo.source.Equals("Embed"))
                     {
                         if (assetInfo.reference == null)
                         {
@@ -217,13 +204,13 @@ namespace Unity.VisualScripting.Community
         {
             historyCount = EditorGUILayout.IntField("HistoryCount", historyCount, GUILayout.ExpandHeight(false));
             _historyScrollPosition =
-                GUILayout.BeginScrollView(_historyScrollPosition, "box", GUILayout.ExpandHeight(false),
+            GUILayout.BeginScrollView(_historyScrollPosition, "box", GUILayout.ExpandHeight(false),
                     GUILayout.MaxHeight(300));
 
             for (var index = 0; index < _historyList.Count; index++)
             {
                 var assetInfo = _historyList[index];
-                if (assetInfo.meta.Contains("Graph"))
+                if (assetInfo.source.Equals("Graph"))
                 {
                     string fileName = System.IO.Path.GetFileNameWithoutExtension(assetInfo.assetPath);
 
@@ -239,7 +226,7 @@ namespace Unity.VisualScripting.Community
                         _selectedGraphInfo = assetInfo;
                     }
                 }
-                else if (assetInfo.meta.Contains("Embed"))
+                else if (assetInfo.source.Equals("Embed"))
                 {
                     if (assetInfo.reference == null)
                     {
@@ -266,7 +253,6 @@ namespace Unity.VisualScripting.Community
                     }
                 }
             }
-
             GUILayout.EndScrollView();
         }
 
@@ -424,7 +410,7 @@ namespace Unity.VisualScripting.Community
                 return result;
             List<UnitInfo> fetched = null;
 
-            if (graphInfo.meta.Contains("Graph"))
+            if (graphInfo.source.Equals("Graph"))
             {
                 var scriptAsset = AssetDatabase.LoadAssetAtPath<ScriptGraphAsset>(graphInfo.assetPath);
                 if (scriptAsset != null)
@@ -442,10 +428,10 @@ namespace Unity.VisualScripting.Community
                     fetched = BuildUnitDetail(TraverseStateGraph(baseRef));
                 }
             }
-            else if (graphInfo.meta.Contains("Embed") && graphInfo.reference != null)
+            else if (graphInfo.source.Equals("Embed"))
             {
                 var selectedScriptAsset = graphInfo.reference.GetComponentInChildren<ScriptMachine>();
-                if (selectedScriptAsset != null)
+                if (selectedScriptAsset != null && selectedScriptAsset.GetReference() != null)
                 {
                     if (selectedScriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
                     var baseRef = selectedScriptAsset.GetReference().AsReference();
@@ -453,11 +439,10 @@ namespace Unity.VisualScripting.Community
                 }
 
                 var selectedStateAsset = graphInfo.reference.GetComponentInChildren<StateMachine>();
-                if (selectedStateAsset != null)
+                if (selectedStateAsset != null && selectedStateAsset.GetReference() != null)
                 {
                     if (selectedStateAsset.GetReference().graph is not StateGraph stateGraph) return result;
-                    //ChildReference(flowState, false);
-                    var baseRef = selectedStateAsset.GetReference().AsReference();
+                    var baseRef = selectedScriptAsset.GetReference().AsReference();
                     fetched = BuildUnitDetail(TraverseStateGraph(baseRef));
                 }
             }
@@ -646,9 +631,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (string.IsNullOrEmpty(nodePath.graph.title))
                     {
-                        prefix = nodePath.serializedObject != null
-                            ? nodePath.serializedObject.name
-                            : nodePath.graph.GetType().ToString().Split(".").Last();
+                        prefix = nodePath.graph.GetType().ToString().Split(".").Last();
                     }
                     else
                     {
@@ -702,7 +685,7 @@ namespace Unity.VisualScripting.Community
                     var graphInfo = new GraphInfo()
                     {
                         title = selectedObject.name,
-                        meta = "Graph",
+                        source = "Graph",
                         type = selectedObject.GetType(),
                         reference = selectedObject,
                         assetPath = assetPath
@@ -724,7 +707,7 @@ namespace Unity.VisualScripting.Community
                         var graphInfo = new GraphInfo()
                         {
                             title = selectedObject.name,
-                            meta = "Embed",
+                            source = "Embed",
                             type = typeof(ScriptGraphAsset),
                             reference = selectedObject,
                             assetPath = "", //selectedObject.name
@@ -744,7 +727,7 @@ namespace Unity.VisualScripting.Community
                         var graphInfo = new GraphInfo()
                         {
                             title = selectedObject.name,
-                            meta = "Embed",
+                            source = "Embed",
                             type = typeof(StateGraphAsset),
                             reference = selectedObject,
                             assetPath = "", //selectedObject.name
