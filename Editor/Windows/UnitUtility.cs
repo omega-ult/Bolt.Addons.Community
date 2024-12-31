@@ -19,7 +19,9 @@ namespace Unity.VisualScripting.Community
                 {
                     if (string.IsNullOrEmpty(nodePath.graph.title))
                     {
+                        var hash = nodePath.graph.GetHashCode();
                         prefix = nodePath.graph.GetType().ToString().Split(".").Last();
+                        prefix += $"[{hash.ToString("X").Substring(0, 4)}]";
                     }
                     else
                     {
