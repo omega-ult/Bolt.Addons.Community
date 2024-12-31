@@ -328,7 +328,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (scriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
                     var baseRef = scriptAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(UnitUtility.TraverseFlowGraph(baseRef));
+                    fetched = BuildUnitDetail(UnitUtility.TraverseFlowGraphUnit(baseRef));
                 }
 
                 var stateAsset = AssetDatabase.LoadAssetAtPath<StateGraphAsset>(graphInfo.assetPath);
@@ -336,7 +336,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (stateAsset.GetReference().graph is not StateGraph stateGraph) return result;
                     var baseRef = stateAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(UnitUtility.TraverseStateGraph(baseRef));
+                    fetched = BuildUnitDetail(UnitUtility.TraverseStateGraphUnit(baseRef));
                 }
             }
             else if (graphInfo.source.Equals("Embed"))
@@ -346,7 +346,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (selectedScriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
                     var baseRef = selectedScriptAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(UnitUtility.TraverseFlowGraph(baseRef));
+                    fetched = BuildUnitDetail(UnitUtility.TraverseFlowGraphUnit(baseRef));
                 }
 
                 var selectedStateAsset = graphInfo.reference.GetComponentInChildren<StateMachine>();
@@ -354,7 +354,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (selectedStateAsset.GetReference().graph is not StateGraph stateGraph) return result;
                     var baseRef = selectedStateAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(UnitUtility.TraverseStateGraph(baseRef));
+                    fetched = BuildUnitDetail(UnitUtility.TraverseStateGraphUnit(baseRef));
                 }
             }
 
@@ -391,7 +391,7 @@ namespace Unity.VisualScripting.Community
                 if (scriptAsset.GetReference().graph is not FlowGraph flowGraph) return detail;
                 var baseRef = scriptAsset.GetReference().AsReference();
 
-                foreach (var element in UnitUtility.TraverseFlowGraph(baseRef))
+                foreach (var element in UnitUtility.TraverseFlowGraphUnit(baseRef))
                 {
                     var reference = element.Item1;
                     var unit = element.Item2;
@@ -416,7 +416,7 @@ namespace Unity.VisualScripting.Community
             {
                 if (stateAsset.GetReference().graph is not StateGraph stateGraph) return detail;
                 var baseRef = stateAsset.GetReference().AsReference();
-                foreach (var element in UnitUtility.TraverseStateGraph(baseRef))
+                foreach (var element in UnitUtility.TraverseStateGraphUnit(baseRef))
                 {
                     var reference = element.Item1;
                     var unit = element.Item2;

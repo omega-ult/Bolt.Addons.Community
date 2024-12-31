@@ -50,7 +50,7 @@ namespace Unity.VisualScripting.Community
         }
         
 
-        public static IEnumerable<(GraphReference, Unit)> TraverseFlowGraph(GraphReference graphReference)
+        public static IEnumerable<(GraphReference, Unit)> TraverseFlowGraphUnit(GraphReference graphReference)
         {
             var flowGraph = graphReference.graph as FlowGraph;
             if (flowGraph == null) yield break;
@@ -68,7 +68,7 @@ namespace Unity.VisualScripting.Community
                         if (subGraph == null) continue;
                         // find sub graph.
                         var childReference = graphReference.ChildReference(subgraphUnit, false);
-                        foreach (var item in TraverseFlowGraph(childReference))
+                        foreach (var item in TraverseFlowGraphUnit(childReference))
                         {
                             yield return item;
                         }
@@ -81,7 +81,7 @@ namespace Unity.VisualScripting.Community
                         if (stateGraph == null) continue;
                         // find state graph.
                         var childReference = graphReference.ChildReference(stateUnit, false);
-                        foreach (var item in TraverseStateGraph(childReference))
+                        foreach (var item in TraverseStateGraphUnit(childReference))
                         {
                             yield return item;
                         }
@@ -94,8 +94,108 @@ namespace Unity.VisualScripting.Community
                 }
             }
         }
+        public static IEnumerable<(GraphReference, Graph)> TraverseFlowGraph(GraphReference graphReference)
+        {
+            var flowGraph = graphReference.graph as FlowGraph;
+            if (flowGraph == null) yield break;
+            var units = flowGraph.units;
+            foreach (var element in units)
+            {
+                var unit = element as Unit;
+                switch (unit)
+                {
+                    // going deep
+                    case SubgraphUnit subgraphUnit:
+                    {
+                        var subGraph = subgraphUnit.nest.embed ?? subgraphUnit.nest.graph;
+                        if (subGraph == null) continue;
+                        yield return (graphReference, subGraph);
+                        var childReference = graphReference.ChildReference(subgraphUnit, false);
+                        foreach (var item in TraverseFlowGraph(childReference))
+                        {
+                            yield return item;
+                        }
 
-        public static IEnumerable<(GraphReference, Unit)> TraverseStateGraph(GraphReference graphReference)
+                        break;
+                    }
+                    case StateUnit stateUnit:
+                    {
+                        var stateGraph = stateUnit.nest.embed ?? stateUnit.nest.graph;
+                        if (stateGraph == null) continue;
+                        yield return (graphReference, stateGraph);
+                        var childReference = graphReference.ChildReference(stateUnit, false);
+                        foreach (var item in TraverseStateGraph(childReference))
+                        {
+                            yield return item;
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        // for graph node only
+        public static IEnumerable<(GraphReference, Graph)> TraverseStateGraph(GraphReference graphReference)
+        {
+            var stateGraph = graphReference.graph as StateGraph;
+            if (stateGraph == null) yield break;
+
+            // var stateGraph = states.nest.graph;
+            // yield direct graphs first.
+            foreach (var state in stateGraph.states)
+            {
+                switch (state)
+                {
+                    case FlowState flowState:
+                    {
+                        // check flow graphs, which is the base of a state.
+                        var graph = flowState.nest.embed ?? flowState.nest.graph;
+                        if (graph == null) continue;
+                        yield return (graphReference, graph);
+                        var childReference = graphReference.ChildReference(flowState, false);
+                        foreach (var item in TraverseFlowGraph(childReference))
+                        {
+                            yield return item;
+                        }
+
+                        break;
+                    }
+                    case SuperState superState:
+                    {
+                        // check state graphs
+                        var subStateGraph = superState.nest.embed ?? superState.nest.graph;
+                        if (subStateGraph == null) continue;
+                        yield return (graphReference, subStateGraph);
+                        var childReference = graphReference.ChildReference(superState, false);
+                        foreach (var item in TraverseStateGraph(childReference))
+                        {
+                            yield return item;
+                        }
+
+                        break;
+                    }
+                    case AnyState:
+                        continue;
+                }
+            }
+
+            // don't forget transition nodes.
+            foreach (var transition in stateGraph.transitions)
+            {
+                if (transition is not FlowStateTransition flowStateTransition) continue;
+                var graph = flowStateTransition.nest.embed ?? flowStateTransition.nest.graph;
+                if (graph == null) continue;
+                yield return (graphReference, graph);
+                var childReference = graphReference.ChildReference(flowStateTransition, false);
+                foreach (var item in TraverseFlowGraph(childReference))
+                {
+                    yield return item;
+                }
+            }
+        }
+
+        public static IEnumerable<(GraphReference, Unit)> TraverseStateGraphUnit(GraphReference graphReference)
         {
             var stateGraph = graphReference.graph as StateGraph;
             if (stateGraph == null) yield break;
@@ -113,7 +213,7 @@ namespace Unity.VisualScripting.Community
 
                         if (graph == null) continue;
                         var childReference = graphReference.ChildReference(flowState, false);
-                        foreach (var item in TraverseFlowGraph(childReference))
+                        foreach (var item in TraverseFlowGraphUnit(childReference))
                         {
                             yield return item;
                         }
@@ -126,7 +226,7 @@ namespace Unity.VisualScripting.Community
                         var subStateGraph = superState.nest.embed ?? superState.nest.graph;
                         if (subStateGraph == null) continue;
                         var childReference = graphReference.ChildReference(superState, false);
-                        foreach (var item in TraverseStateGraph(childReference))
+                        foreach (var item in TraverseStateGraphUnit(childReference))
                         {
                             yield return item;
                         }
@@ -135,6 +235,18 @@ namespace Unity.VisualScripting.Community
                     }
                     case AnyState:
                         continue;
+                }
+            }
+            // don't forget transition nodes.
+            foreach (var transition in stateGraph.transitions)
+            {
+                if (transition is not FlowStateTransition flowStateTransition) continue;
+                var graph = flowStateTransition.nest.embed ?? flowStateTransition.nest.graph;
+                if (graph == null) continue;
+                var childReference = graphReference.ChildReference(flowStateTransition, false);
+                foreach (var item in TraverseFlowGraphUnit(childReference))
+                {
+                    yield return item;
                 }
             }
         }

@@ -131,7 +131,7 @@ namespace Unity.VisualScripting.Community
         IUnit FindNode(GraphReference reference, string nodeName)
         {
             if (reference == null) return null;
-            foreach (var enumerator in UnitUtility.TraverseFlowGraph(reference))
+            foreach (var enumerator in UnitUtility.TraverseFlowGraphUnit(reference))
             {
                 if (enumerator.Item2.ToString() == nodeName)
                 {
@@ -139,7 +139,7 @@ namespace Unity.VisualScripting.Community
                 }
             }
 
-            foreach (var enumerator in UnitUtility.TraverseStateGraph(reference))
+            foreach (var enumerator in UnitUtility.TraverseStateGraphUnit(reference))
             {
                 if (enumerator.Item2.ToString() == nodeName)
                 {

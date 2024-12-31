@@ -273,7 +273,7 @@ namespace Unity.VisualScripting.Community
                 var asset = AssetDatabase.LoadAssetAtPath<ScriptGraphAsset>(assetPath);
                 if (asset.GetReference().graph is not FlowGraph flowGraph) continue;
                 var baseRef = asset.GetReference().AsReference();
-                foreach (var element in TraverseFlowGraphUnit(baseRef))
+                foreach (var element in UnitUtility.TraverseFlowGraphUnit(baseRef))
                 {
                     var reference = element.Item1;
                     var unit = element.Item2;
@@ -300,7 +300,7 @@ namespace Unity.VisualScripting.Community
                     _matchGraph.Add(baseMatch);
                 }
 
-                foreach (var (reference, graph) in TraverseFlowGraph(baseRef))
+                foreach (var (reference, graph) in UnitUtility.TraverseFlowGraph(baseRef))
                 {
                     var newMatch = CheckMatchGraph(matchWord, graph, null);
                     if (newMatch == null) continue;
@@ -323,7 +323,7 @@ namespace Unity.VisualScripting.Community
 
                 if (asset.GetReference().graph is not StateGraph stateGraph) continue;
                 var baseRef = asset.GetReference().AsReference();
-                foreach (var element in TraverseStateGraphUnit(baseRef))
+                foreach (var element in UnitUtility.TraverseStateGraphUnit(baseRef))
                 {
                     var reference = element.Item1;
                     var unit = element.Item2;
@@ -351,7 +351,7 @@ namespace Unity.VisualScripting.Community
                     _matchGraph.Add(baseMatch);
                 }
 
-                foreach (var (reference, graph) in TraverseStateGraph(baseRef))
+                foreach (var (reference, graph) in UnitUtility.TraverseStateGraph(baseRef))
                 {
                     var newMatch = CheckMatchGraph(matchWord, graph, null);
                     if (newMatch == null) continue;
@@ -366,210 +366,6 @@ namespace Unity.VisualScripting.Community
 
             _matchGraph.Sort((a, b) =>
                 String.Compare(a.AssetName, b.AssetName, StringComparison.Ordinal));
-        }
-
-
-        // for graph node only
-        IEnumerable<(GraphReference, Graph)> TraverseFlowGraph(GraphReference graphReference)
-        {
-            var flowGraph = graphReference.graph as FlowGraph;
-            if (flowGraph == null) yield break;
-            var units = flowGraph.units;
-            foreach (var element in units)
-            {
-                var unit = element as Unit;
-                switch (unit)
-                {
-                    // going deep
-                    case SubgraphUnit subgraphUnit:
-                    {
-                        var subGraph = subgraphUnit.nest.embed ?? subgraphUnit.nest.graph;
-                        if (subGraph == null) continue;
-                        yield return (graphReference, subGraph);
-                        var childReference = graphReference.ChildReference(subgraphUnit, false);
-                        foreach (var item in TraverseFlowGraph(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    case StateUnit stateUnit:
-                    {
-                        var stateGraph = stateUnit.nest.embed ?? stateUnit.nest.graph;
-                        if (stateGraph == null) continue;
-                        yield return (graphReference, stateGraph);
-                        var childReference = graphReference.ChildReference(stateUnit, false);
-                        foreach (var item in TraverseStateGraph(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                }
-            }
-        }
-
-        // for graph node only
-        IEnumerable<(GraphReference, Graph)> TraverseStateGraph(GraphReference graphReference)
-        {
-            var stateGraph = graphReference.graph as StateGraph;
-            if (stateGraph == null) yield break;
-
-            // var stateGraph = states.nest.graph;
-            // yield direct graphs first.
-            foreach (var state in stateGraph.states)
-            {
-                switch (state)
-                {
-                    case FlowState flowState:
-                    {
-                        // check flow graphs, which is the base of a state.
-                        var graph = flowState.nest.embed ?? flowState.nest.graph;
-                        if (graph == null) continue;
-                        yield return (graphReference, graph);
-                        var childReference = graphReference.ChildReference(flowState, false);
-                        foreach (var item in TraverseFlowGraph(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    case SuperState superState:
-                    {
-                        // check state graphs
-                        var subStateGraph = superState.nest.embed ?? superState.nest.graph;
-                        if (subStateGraph == null) continue;
-                        yield return (graphReference, subStateGraph);
-                        var childReference = graphReference.ChildReference(superState, false);
-                        foreach (var item in TraverseStateGraph(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    case AnyState:
-                        continue;
-                }
-            }
-
-            // don't forget transition nodes.
-            foreach (var transition in stateGraph.transitions)
-            {
-                if (transition is not FlowStateTransition flowStateTransition) continue;
-                var graph = flowStateTransition.nest.embed ?? flowStateTransition.nest.graph;
-                if (graph == null) continue;
-                yield return (graphReference, graph);
-                var childReference = graphReference.ChildReference(flowStateTransition, false);
-                foreach (var item in TraverseFlowGraph(childReference))
-                {
-                    yield return item;
-                }
-            }
-        }
-
-        IEnumerable<(GraphReference, Unit)> TraverseFlowGraphUnit(GraphReference graphReference)
-        {
-            var flowGraph = graphReference.graph as FlowGraph;
-            if (flowGraph == null) yield break;
-            var units = flowGraph.units;
-            foreach (var element in units)
-            {
-                var unit = element as Unit;
-                switch (unit)
-                {
-                    // going deep
-                    case SubgraphUnit subgraphUnit:
-                    {
-                        var subGraph = subgraphUnit.nest.embed ?? subgraphUnit.nest.graph;
-                        if (subGraph == null) continue;
-                        // find sub graph.
-                        var childReference = graphReference.ChildReference(subgraphUnit, false);
-                        foreach (var item in TraverseFlowGraphUnit(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    case StateUnit stateUnit:
-                    {
-                        var stateGraph = stateUnit.nest.embed ?? stateUnit.nest.graph;
-                        if (stateGraph == null) continue;
-                        // find state graph.
-                        var childReference = graphReference.ChildReference(stateUnit, false);
-                        foreach (var item in TraverseStateGraphUnit(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    default:
-                        yield return (graphReference, unit);
-                        break;
-                }
-            }
-        }
-
-        IEnumerable<(GraphReference, Unit)> TraverseStateGraphUnit(GraphReference graphReference)
-        {
-            var stateGraph = graphReference.graph as StateGraph;
-            if (stateGraph == null) yield break;
-
-            // var stateGraph = states.nest.graph;
-            // yield direct graphs first.
-            foreach (var state in stateGraph.states)
-            {
-                switch (state)
-                {
-                    case FlowState flowState:
-                    {
-                        // check flow graphs, which is the base of a state.
-                        var graph = flowState.nest.embed ?? flowState.nest.graph;
-
-                        if (graph == null) continue;
-                        var childReference = graphReference.ChildReference(flowState, false);
-                        foreach (var item in TraverseFlowGraphUnit(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    case SuperState superState:
-                    {
-                        // check state graphs
-                        var subStateGraph = superState.nest.embed ?? superState.nest.graph;
-                        if (subStateGraph == null) continue;
-                        var childReference = graphReference.ChildReference(superState, false);
-                        foreach (var item in TraverseStateGraphUnit(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    case AnyState:
-                        continue;
-                }
-            }
-
-            // don't forget transition nodes.
-            foreach (var transition in stateGraph.transitions)
-            {
-                if (transition is not FlowStateTransition flowStateTransition) continue;
-                var graph = flowStateTransition.nest.embed ?? flowStateTransition.nest.graph;
-                if (graph == null) continue;
-                var childReference = graphReference.ChildReference(flowStateTransition, false);
-                foreach (var item in TraverseFlowGraphUnit(childReference))
-                {
-                    yield return item;
-                }
-            }
         }
 
         MatchGraph CheckMatchGraph(Regex matchWord, Graph graph, string assetPath = null)
