@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 
 namespace Unity.VisualScripting.Community
 {
-    public class NodeIndexWindow : EditorWindow
+    public class UnitIndexWindow : EditorWindow
     {
         [Serializable]
         class GraphInfo
@@ -45,7 +45,7 @@ namespace Unity.VisualScripting.Community
         [MenuItem("Window/UVS Community/Node Index")]
         public static void Open()
         {
-            var window = GetWindow<NodeIndexWindow>();
+            var window = GetWindow<UnitIndexWindow>();
             window.titleContent = new GUIContent("Node Index");
         }
 
@@ -96,7 +96,7 @@ namespace Unity.VisualScripting.Community
                     if (GUILayout.Button(icon,
                             EditorStyles.linkLabel, GUILayout.MaxHeight(IconSize.Small + 4)))
                     {
-                        FocusMatchObject(unit.Reference, unit.Unit);
+                        UnitUtility.FocusUnit(unit.Reference, unit.Unit);
                     }
                 }
             }
@@ -303,101 +303,12 @@ namespace Unity.VisualScripting.Community
                 var detail = new UnitInfo();
                 var reference = element.Item1;
                 var unit = element.Item2;
-                detail.Path = GetUnitPath(reference);
+                detail.Path = UnitUtility.GetUnitPath(reference); 
                 detail.Name = unit.ToString().Split('#')[0];
                 detail.Unit = unit;
                 detail.Reference = reference;
-                switch (unit)
-                {
-                    case FlowReroute:
-                    case GraphOutput:
-                    case GraphInput:
-                    case ValueReroute:
-                        break;
-                    case Literal literal:
-                        detail.Meta = $"{literal.value}";
-                        result.Add(detail);
-                        break;
-                    case MemberUnit invokeMember:
-                        detail.Meta = $"{invokeMember.member.targetTypeName}->{invokeMember.member.name}";
-                        result.Add(detail);
-                        break;
-                    case UnifiedVariableUnit setVariable:
-                        var vName = "";
-                        if (!setVariable.name.hasValidConnection)
-                        {
-                            if (setVariable.defaultValues.TryGetValue(nameof(setVariable.name), out var v))
-                            {
-                                vName = v.ToString();
-                            }
-                        }
-                        else
-                        {
-                            vName = setVariable.name.connection.source.unit.ToString().Split('#')[0];
-                        }
-
-                        detail.Meta = $"{setVariable.kind}:{vName}";
-                        result.Add(detail);
-                        break;
-                    case CustomEvent customEvent:
-                        var eName = "";
-                        if (!customEvent.name.hasValidConnection)
-                        {
-                            if (customEvent.defaultValues.TryGetValue(nameof(customEvent.name), out var v))
-                            {
-                                eName = v.ToString();
-                            }
-                        }
-                        else
-                        {
-                            eName = customEvent.name.connection.source.unit.ToString().Split('#')[0];
-                        }
-
-                        detail.Meta = $"{eName} : [{customEvent.argumentCount}]";
-                        result.Add(detail);
-                        break;
-                    case TriggerCustomEvent triggerEvent:
-                        var teName = "";
-                        if (!triggerEvent.name.hasValidConnection)
-                        {
-                            if (triggerEvent.defaultValues.TryGetValue(nameof(triggerEvent.name), out var v))
-                            {
-                                teName = v.ToString();
-                            }
-                        }
-                        else
-                        {
-                            teName = triggerEvent.name.connection.source.unit.ToString().Split('#')[0];
-                        }
-
-                        detail.Meta = $"{teName} : [{triggerEvent.argumentCount}]";
-                        result.Add(detail);
-                        break;
-
-                    case TriggerDefinedEvent triggerDefinedEvent:
-                        detail.Meta = $"{triggerDefinedEvent.eventType}";
-                        result.Add(detail);
-                        break;
-                    case TriggerGlobalDefinedEvent triggerDefinedEvent:
-                        detail.Meta = $"{triggerDefinedEvent.eventType}";
-                        result.Add(detail);
-                        break;
-                    case GlobalDefinedEventNode definedEventNode:
-                        detail.Meta = $"{definedEventNode.eventType}";
-                        result.Add(detail);
-                        break;
-                    case DefinedEventNode definedEventNode:
-                        detail.Meta = $"{definedEventNode.eventType}";
-                        result.Add(detail);
-                        break;
-                    case MissingType missingType:
-                        detail.Meta = $"{missingType.formerType}";
-                        result.Add(detail);
-                        break;
-                    default:
-                        result.Add(detail);
-                        break;
-                }
+                detail.Meta = UnitUtility.UnitBrief(unit);
+                result.Add(detail);
             }
 
             return result;
@@ -417,7 +328,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (scriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
                     var baseRef = scriptAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(TraverseFlowGraph(baseRef));
+                    fetched = BuildUnitDetail(UnitUtility.TraverseFlowGraph(baseRef));
                 }
 
                 var stateAsset = AssetDatabase.LoadAssetAtPath<StateGraphAsset>(graphInfo.assetPath);
@@ -425,7 +336,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (stateAsset.GetReference().graph is not StateGraph stateGraph) return result;
                     var baseRef = stateAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(TraverseStateGraph(baseRef));
+                    fetched = BuildUnitDetail(UnitUtility.TraverseStateGraph(baseRef));
                 }
             }
             else if (graphInfo.source.Equals("Embed"))
@@ -435,7 +346,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (selectedScriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
                     var baseRef = selectedScriptAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(TraverseFlowGraph(baseRef));
+                    fetched = BuildUnitDetail(UnitUtility.TraverseFlowGraph(baseRef));
                 }
 
                 var selectedStateAsset = graphInfo.reference.GetComponentInChildren<StateMachine>();
@@ -443,7 +354,7 @@ namespace Unity.VisualScripting.Community
                 {
                     if (selectedStateAsset.GetReference().graph is not StateGraph stateGraph) return result;
                     var baseRef = selectedStateAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(TraverseStateGraph(baseRef));
+                    fetched = BuildUnitDetail(UnitUtility.TraverseStateGraph(baseRef));
                 }
             }
 
@@ -480,11 +391,11 @@ namespace Unity.VisualScripting.Community
                 if (scriptAsset.GetReference().graph is not FlowGraph flowGraph) return detail;
                 var baseRef = scriptAsset.GetReference().AsReference();
 
-                foreach (var element in TraverseFlowGraph(baseRef))
+                foreach (var element in UnitUtility.TraverseFlowGraph(baseRef))
                 {
                     var reference = element.Item1;
                     var unit = element.Item2;
-                    var node = GetUnitPath(reference);
+                    var node = UnitUtility.GetUnitPath(reference);
                     if (detail.ContainsKey(node))
                     {
                         detail[node] = detail[node] + unit.ToString().Split('#')[0];
@@ -505,13 +416,13 @@ namespace Unity.VisualScripting.Community
             {
                 if (stateAsset.GetReference().graph is not StateGraph stateGraph) return detail;
                 var baseRef = stateAsset.GetReference().AsReference();
-                foreach (var element in TraverseStateGraph(baseRef))
+                foreach (var element in UnitUtility.TraverseStateGraph(baseRef))
                 {
                     var reference = element.Item1;
                     var unit = element.Item2;
                     //Debug.Log(unit);
 
-                    var node = GetUnitPath(reference);
+                    var node = UnitUtility.GetUnitPath(reference);
                     if (detail.ContainsKey(node))
                     {
                         detail[node] = detail[node] + unit.ToString().Split('#')[0];
@@ -530,137 +441,6 @@ namespace Unity.VisualScripting.Community
             return detail;
         }
 
-        IEnumerable<(GraphReference, Unit)> TraverseFlowGraph(GraphReference graphReference)
-        {
-            var flowGraph = graphReference.graph as FlowGraph;
-            if (flowGraph == null) yield break;
-            var units = flowGraph.units;
-            foreach (var element in units)
-            {
-                var unit = element as Unit;
-
-                switch (unit)
-                {
-                    // going deep
-                    case SubgraphUnit subgraphUnit:
-                    {
-                        var subGraph = subgraphUnit.nest.embed ?? subgraphUnit.nest.graph;
-                        if (subGraph == null) continue;
-                        // find sub graph.
-                        var childReference = graphReference.ChildReference(subgraphUnit, false);
-                        foreach (var item in TraverseFlowGraph(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    case StateUnit stateUnit:
-                    {
-                        var stateGraph = stateUnit.nest.embed ?? stateUnit.nest.graph;
-                        if (stateGraph == null) continue;
-                        // find state graph.
-                        var childReference = graphReference.ChildReference(stateUnit, false);
-                        foreach (var item in TraverseStateGraph(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    default:
-                        yield return (graphReference, unit);
-                        break;
-                }
-            }
-        }
-
-        IEnumerable<(GraphReference, Unit)> TraverseStateGraph(GraphReference graphReference)
-        {
-            var stateGraph = graphReference.graph as StateGraph;
-            if (stateGraph == null) yield break;
-
-            // yield direct graphs first.
-            foreach (var state in stateGraph.states)
-            {
-                //Debug.Log(state);
-                switch (state)
-                {
-                    case FlowState flowState:
-                    {
-                        // check flow graphs, which is the base of a state.
-                        var graph = flowState.nest.embed ?? flowState.nest.graph;
-
-                        if (graph == null) continue;
-                        var childReference = graphReference.ChildReference(flowState, false);
-                        foreach (var item in TraverseFlowGraph(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    case SuperState superState:
-                    {
-                        // check state graphs
-                        var subStateGraph = superState.nest.embed ?? superState.nest.graph;
-                        if (subStateGraph == null) continue;
-                        var childReference = graphReference.ChildReference(superState, false);
-                        foreach (var item in TraverseStateGraph(childReference))
-                        {
-                            yield return item;
-                        }
-
-                        break;
-                    }
-                    case AnyState:
-                        continue;
-                }
-            }
-        }
-
-        string GetUnitPath(GraphReference reference)
-        {
-            var nodePath = reference;
-            var pathNames = "";
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            while (nodePath != null)
-            {
-                var prefix = "::";
-                if (nodePath.graph != null)
-                {
-                    if (string.IsNullOrEmpty(nodePath.graph.title))
-                    {
-                        prefix = nodePath.graph.GetType().ToString().Split(".").Last();
-                    }
-                    else
-                    {
-                        prefix = nodePath.graph.title;
-                    }
-
-                    prefix += "->";
-                }
-
-                pathNames = prefix + pathNames; //
-                nodePath = nodePath.ParentReference(false);
-            }
-
-            return pathNames;
-        }
-
-        void FocusMatchObject(GraphReference reference, IGraphElement unit)
-        {
-            // open
-            GraphWindow.OpenActive(reference);
-
-            // focus
-            var context = reference.Context();
-            if (context == null)
-                return;
-            context.BeginEdit();
-            context.canvas?.ViewElements(((IGraphElement)unit).Yield());
-            context.selection.Select(unit);
-        }
 
         void SortHistory()
         {

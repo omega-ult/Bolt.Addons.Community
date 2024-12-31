@@ -13,7 +13,7 @@ using Object = UnityEngine.Object;
 
 namespace Unity.VisualScripting.Community
 {
-    public class SearchNodeWindow : EditorWindow
+    public class UnitSearchWindow : EditorWindow
     {
         // public static Event e;
         enum MatchType
@@ -72,7 +72,7 @@ namespace Unity.VisualScripting.Community
         [MenuItem("Window/UVS Community/Search Node")]
         public static void Open()
         {
-            var window = GetWindow<SearchNodeWindow>();
+            var window = GetWindow<UnitSearchWindow>();
             window.titleContent = new GUIContent("Search Node");
         }
 
