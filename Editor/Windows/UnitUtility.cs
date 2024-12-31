@@ -237,6 +237,20 @@ namespace Unity.VisualScripting.Community
 
                     var rGlobal = returnEvent.global ? "[G]" : "";
                     return $"{rGlobal}{rName} : [{returnEvent.count}]";
+                case BoltUnityEvent boltUnityEvent:
+                    var uEvent = "";
+                    if (!boltUnityEvent.name.hasValidConnection)
+                    {
+                        if (boltUnityEvent.defaultValues.TryGetValue(nameof(boltUnityEvent.name), out var v))
+                        {
+                            uEvent = v.ToString();
+                        }
+                    }
+                    else
+                    {
+                        uEvent = boltUnityEvent.name.connection.source.unit.ToString().Split('#')[0];
+                    }
+                    return $"{uEvent}";
                 case MissingType missingType:
                     return $"{missingType.formerType}";
                 default:
