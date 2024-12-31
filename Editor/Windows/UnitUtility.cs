@@ -7,7 +7,7 @@ namespace Unity.VisualScripting.Community
 {
     public static class UnitUtility
     {
-        public static string GetUnitPath(GraphReference reference, string separator = "->")
+        public static string GetUnitPath(GraphReference reference, string separator = "->", bool ignoreRoot = true)
         {
             var nodePath = reference;
             var pathNames = "";
@@ -31,7 +31,10 @@ namespace Unity.VisualScripting.Community
                     prefix += separator;
                 }
 
-                pathNames = prefix + pathNames; //
+                if (ignoreRoot && nodePath == reference)
+                {
+                    pathNames = prefix + pathNames; 
+                }
                 nodePath = nodePath.ParentReference(false);
             }
 
