@@ -204,7 +204,7 @@ namespace Unity.VisualScripting.Community
         {
             historyCount = EditorGUILayout.IntField("HistoryCount", historyCount, GUILayout.ExpandHeight(false));
             _historyScrollPosition =
-            GUILayout.BeginScrollView(_historyScrollPosition, "box", GUILayout.ExpandHeight(false),
+                GUILayout.BeginScrollView(_historyScrollPosition, "box", GUILayout.ExpandHeight(false),
                     GUILayout.MaxHeight(300));
 
             for (var index = 0; index < _historyList.Count; index++)
@@ -253,6 +253,7 @@ namespace Unity.VisualScripting.Community
                     }
                 }
             }
+
             GUILayout.EndScrollView();
         }
 
@@ -303,7 +304,7 @@ namespace Unity.VisualScripting.Community
                 var detail = new UnitInfo();
                 var reference = element.Item1;
                 var unit = element.Item2;
-                detail.Path = UnitUtility.GetUnitPath(reference); 
+                detail.Path = UnitUtility.GetUnitPath(reference);
                 detail.Name = unit.ToString().Split('#')[0];
                 detail.Unit = unit;
                 detail.Reference = reference;
@@ -339,23 +340,31 @@ namespace Unity.VisualScripting.Community
                     fetched = BuildUnitDetail(UnitUtility.TraverseStateGraphUnit(baseRef));
                 }
             }
-            else if (graphInfo.source.Equals("Embed"))
+            else if (graphInfo.source.Equals("Embed") && graphInfo.reference != null)
             {
-                var selectedScriptAsset = graphInfo.reference.GetComponentInChildren<ScriptMachine>();
-                if (selectedScriptAsset != null && selectedScriptAsset.GetReference() != null)
+                try
                 {
-                    if (selectedScriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
-                    var baseRef = selectedScriptAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(UnitUtility.TraverseFlowGraphUnit(baseRef));
-                }
+                    var selectedScriptAsset = graphInfo.reference.GetComponentInChildren<ScriptMachine>();
+                    if (selectedScriptAsset != null && selectedScriptAsset.GetReference() != null)
+                    {
+                        if (selectedScriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
+                        var baseRef = selectedScriptAsset.GetReference().AsReference();
+                        fetched = BuildUnitDetail(UnitUtility.TraverseFlowGraphUnit(baseRef));
+                    }
 
-                var selectedStateAsset = graphInfo.reference.GetComponentInChildren<StateMachine>();
-                if (selectedStateAsset != null && selectedStateAsset.GetReference() != null)
-                {
-                    if (selectedStateAsset.GetReference().graph is not StateGraph stateGraph) return result;
-                    var baseRef = selectedStateAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(UnitUtility.TraverseStateGraphUnit(baseRef));
+                    var selectedStateAsset = graphInfo.reference.GetComponentInChildren<StateMachine>();
+                    if (selectedStateAsset != null && selectedStateAsset.GetReference() != null)
+                    {
+                        if (selectedStateAsset.GetReference().graph is not StateGraph stateGraph) return result;
+                        var baseRef = selectedStateAsset.GetReference().AsReference();
+                        fetched = BuildUnitDetail(UnitUtility.TraverseStateGraphUnit(baseRef));
+                    }
                 }
+                catch
+                {
+                    // pass
+                    // failed if exit from prefab mode.
+                } 
             }
 
             if (fetched != null)
