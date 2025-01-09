@@ -128,7 +128,7 @@ namespace Unity.VisualScripting.Community
                 }
 
                 GUILayout.EndHorizontal();
-                GUILayout.BeginScrollView(_graphScrollPosition, GUILayout.ExpandHeight(true));
+                _graphScrollPosition = GUILayout.BeginScrollView(_graphScrollPosition, GUILayout.ExpandHeight(true));
                 // 显示记录的每个 Script Graph 文件
                 var graphPattern = new Regex(_graphFilterString, RegexOptions.IgnoreCase);
 
