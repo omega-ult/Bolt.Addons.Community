@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Unity.VisualScripting.Community.Libraries.Humility;
+using UnityEngine.EventSystems;
 using Object = UnityEngine.Object;
 
 namespace Unity.VisualScripting.Community
@@ -434,13 +435,10 @@ namespace Unity.VisualScripting.Community
 
             matchRecord.FullTypeName = typeName;
 
-
             // fit fields
             var fields = unit.GetType()
                 .GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             var fitField = false;
-
-            // var fitStrings = new List<string>();
 
             // try read serialized members
             foreach (var kvp in unit.defaultValues)
@@ -462,7 +460,6 @@ namespace Unity.VisualScripting.Community
                 {
                     var value = field.GetValue(unit);
                     if (value == null) continue;
-                    if (!value.GetType().IsPrimitive) continue;
                     var serializedValue = value.ToString();
                     if (!matchWord.IsMatch(serializedValue)) continue;
                     matchRecord.Matches.Add(MatchType.Field);
