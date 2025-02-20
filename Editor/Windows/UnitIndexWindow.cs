@@ -304,7 +304,7 @@ namespace Unity.VisualScripting.Community
                 var detail = new UnitInfo();
                 var reference = element.Item1;
                 var unit = element.Item2;
-                detail.Path = UnitUtility.GetUnitPath(reference);
+                detail.Path = UnitUtility.GetGraphPath(reference);
                 detail.Name = unit.ToString().Split('#')[0];
                 detail.Unit = unit;
                 detail.Reference = reference;
@@ -404,7 +404,7 @@ namespace Unity.VisualScripting.Community
                 {
                     var reference = element.Item1;
                     var unit = element.Item2;
-                    var node = UnitUtility.GetUnitPath(reference);
+                    var node = UnitUtility.GetGraphPath(reference);
                     if (detail.ContainsKey(node))
                     {
                         detail[node] = detail[node] + unit.ToString().Split('#')[0];
@@ -431,7 +431,7 @@ namespace Unity.VisualScripting.Community
                     var unit = element.Item2;
                     //Debug.Log(unit);
 
-                    var node = UnitUtility.GetUnitPath(reference);
+                    var node = UnitUtility.GetGraphPath(reference);
                     if (detail.ContainsKey(node))
                     {
                         detail[node] = detail[node] + unit.ToString().Split('#')[0];

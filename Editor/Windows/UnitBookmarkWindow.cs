@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using Object = UnityEngine.Object;
 using System.IO;
+using UnityEngine.Serialization;
 
 namespace Unity.VisualScripting.Community
 {
@@ -22,7 +23,7 @@ namespace Unity.VisualScripting.Community
             public GraphReference Reference;
             public IUnit Unit;
             public string Name;
-            public string Path;
+            // public string Path;
             public string Meta;
         }
 
@@ -61,7 +62,10 @@ namespace Unity.VisualScripting.Community
                     var tex = Icons.Icon(unit.Unit.GetType());
                     var icon = new GUIContent(tex[IconSize.Small]);
                     var fName = Path.GetFileNameWithoutExtension(bookmark.assetPath);
-                    var label = $"{fName}=>{unit.Name}";
+                    
+                    
+                    var path = UnitUtility.GetGraphPath(unit.Reference);
+                    var label = $"{fName}=>{path}{unit.Name}";
                     if (!string.IsNullOrEmpty(unit.Meta))
                     {
                         label += " (" + unit.Meta + ")";
@@ -106,14 +110,12 @@ namespace Unity.VisualScripting.Community
                 case ScriptGraphAsset scriptGraphAsset:
                 {
                     var baseRef = scriptGraphAsset.GetReference().AsReference();
-                    detail.Path = UnitUtility.GetUnitPath(baseRef);
                     detail.Reference = baseRef;
                     break;
                 }
                 case StateGraphAsset stateGraphAsset:
                 {
                     var baseRef = stateGraphAsset.GetReference().AsReference();
-                    detail.Path = UnitUtility.GetUnitPath(baseRef);
                     detail.Reference = baseRef;
                     break;
                 }
@@ -121,6 +123,7 @@ namespace Unity.VisualScripting.Community
                     return null;
             }
 
+            detail.Reference = UnitUtility.GetUnitGraphReference(detail.Reference, bookmark.name);
             detail.Unit = FindNode(detail.Reference, bookmark.name);
             if (detail.Unit == null) return null;
             detail.Name = detail.Unit.ToString().Split('#')[0];
@@ -170,9 +173,11 @@ namespace Unity.VisualScripting.Community
                     var existed = _bookmarkList.Any(x => x.assetPath == assetPath && x.name == uName);
                     if (!existed)
                     {
+                        // var gRef = UnitUtility.GetUnitGraphReference(window.reference, unit.ToString());
                         _bookmarkList.Add(new Bookmark()
                         {
                             assetPath = assetPath,
+                            // graphPath = gRef == null? "" : UnitUtility.GetGraphPath(gRef),
                             name = uName,
                         });
                     }

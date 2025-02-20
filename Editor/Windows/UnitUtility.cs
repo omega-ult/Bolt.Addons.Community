@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,29 @@ namespace Unity.VisualScripting.Community
 {
     public static class UnitUtility
     {
-        public static string GetUnitPath(GraphReference reference, string separator = "->", bool ignoreRoot = true)
+        public static GraphReference GetUnitGraphReference(GraphReference assetEntry, string unitName)
+        {
+            if (assetEntry == null) return null;
+            foreach (var (reference, unit) in TraverseFlowGraphUnit(assetEntry))
+            {
+                if (unit.ToString() == unitName)
+                {
+                    return reference;
+                }
+                
+            }
+            foreach (var (reference, unit) in TraverseStateGraphUnit(assetEntry))
+            {
+                if (unit.ToString() == unitName)
+                {
+                    return reference;
+                }
+                
+            }
+            return null;
+
+        }
+        public static string GetGraphPath(GraphReference reference, string separator = "->", bool ignoreRoot = true)
         {
             var nodePath = reference;
             var pathNames = "";
@@ -33,14 +56,15 @@ namespace Unity.VisualScripting.Community
 
                 if (ignoreRoot && nodePath == reference)
                 {
-                    pathNames = prefix + pathNames; 
+                    pathNames = prefix + pathNames;
                 }
+
                 nodePath = nodePath.ParentReference(false);
             }
 
             return pathNames;
         }
-        
+
         public static void FocusUnit(GraphReference reference, IGraphElement unit)
         {
             // open
@@ -53,7 +77,7 @@ namespace Unity.VisualScripting.Community
             context.BeginEdit();
             context.canvas?.ViewElements(((IGraphElement)unit).Yield());
         }
-        
+
 
         public static IEnumerable<(GraphReference, Unit)> TraverseFlowGraphUnit(GraphReference graphReference)
         {
@@ -99,6 +123,7 @@ namespace Unity.VisualScripting.Community
                 }
             }
         }
+
         public static IEnumerable<(GraphReference, Graph)> TraverseFlowGraph(GraphReference graphReference)
         {
             var flowGraph = graphReference.graph as FlowGraph;
@@ -242,6 +267,7 @@ namespace Unity.VisualScripting.Community
                         continue;
                 }
             }
+
             // don't forget transition nodes.
             foreach (var transition in stateGraph.transitions)
             {
@@ -255,7 +281,7 @@ namespace Unity.VisualScripting.Community
                 }
             }
         }
-        
+
         public static string UnitBrief(IUnit unit)
         {
             if (unit == null) return null;
@@ -336,6 +362,7 @@ namespace Unity.VisualScripting.Community
                     {
                         trName = triggerReturnEvent.name.connection.source.unit.ToString().Split('#')[0];
                     }
+
                     var trGlobal = triggerReturnEvent.global ? "[G]" : "";
                     return $"{trGlobal}{trName} : [{triggerReturnEvent.count}]";
                 case ReturnEvent returnEvent:
@@ -367,6 +394,7 @@ namespace Unity.VisualScripting.Community
                     {
                         uEvent = boltUnityEvent.name.connection.source.unit.ToString().Split('#')[0];
                     }
+
                     return $"{uEvent}";
                 case MissingType missingType:
                     return $"{missingType.formerType}";
