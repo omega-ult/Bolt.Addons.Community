@@ -148,7 +148,7 @@ namespace Unity.VisualScripting.Community
             {
                 case ScriptGraphAsset scriptGraphAsset:
                 {
-                    var flowMachines = FindObjectsOfType<ScriptMachine>();
+                    var flowMachines = FindObjectsOfType<ScriptMachine>(true);
                     foreach (var machine in flowMachines)
                     {
                         if (machine.GetReference().serializedObject != asset) continue;
@@ -158,7 +158,7 @@ namespace Unity.VisualScripting.Community
                     break;
                 case StateGraphAsset stateGraphAsset:
                 {
-                    var stateMachines = FindObjectsOfType<StateMachine>();
+                    var stateMachines = FindObjectsOfType<StateMachine>(true);
                     foreach (var machine in stateMachines)
                     {
                         if (machine.GetReference().serializedObject != asset) continue;
@@ -175,7 +175,6 @@ namespace Unity.VisualScripting.Community
                 if (GUILayout.Button(go.name, EditorStyles.linkLabel))
                 {
                     Selection.activeObject = go;
-                    // Selection.objects = new[] { go };
                     EditorGUIUtility.PingObject(go);
                     
                     var unit = FindNode(reference, _activeBookmark.name);
