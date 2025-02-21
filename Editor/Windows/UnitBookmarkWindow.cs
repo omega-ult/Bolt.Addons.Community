@@ -143,45 +143,48 @@ namespace Unity.VisualScripting.Community
             GUILayout.Label("Active Objects");
             GUILayout.Label(icon, GUILayout.MaxHeight(IconSize.Small + 4));
             var asset = AssetDatabase.LoadAssetAtPath<Object>(_activeBookmark.assetPath);
-            Dictionary<GameObject, GraphReference> linkedGameObjectMap = new();
-            switch (asset)
+            Dictionary<GameObject, (GraphReference, Unit)> linkedGameObjectMap = new();
+            var flowMachines = FindObjectsOfType<ScriptMachine>(true);
+            foreach (var machine in flowMachines)
             {
-                case ScriptGraphAsset scriptGraphAsset:
+                if (machine.GetReference() == null) continue;
+                foreach (var (reference, unit) in UnitUtility.TraverseFlowGraphUnit(machine.GetReference()
+                             .AsReference()))
                 {
-                    var flowMachines = FindObjectsOfType<ScriptMachine>(true);
-                    foreach (var machine in flowMachines)
+                    if (unit.ToString() == _activeBookmark.name)
                     {
-                        if (machine.GetReference().serializedObject != asset) continue;
-                        linkedGameObjectMap[machine.gameObject] = machine.GetReference().AsReference();
+                        linkedGameObjectMap[machine.gameObject] = (reference, unit);
                     }
                 }
-                    break;
-                case StateGraphAsset stateGraphAsset:
+            }
+
+            var stateMachines = FindObjectsOfType<StateMachine>(true);
+            foreach (var machine in stateMachines)
+            {
+                if (machine.GetReference() == null) continue;
+                foreach (var (reference, unit) in UnitUtility.TraverseStateGraphUnit(machine.GetReference()
+                             .AsReference()))
                 {
-                    var stateMachines = FindObjectsOfType<StateMachine>(true);
-                    foreach (var machine in stateMachines)
+                    if (unit.ToString() == _activeBookmark.name)
                     {
-                        if (machine.GetReference().serializedObject != asset) continue;
-                        linkedGameObjectMap[machine.gameObject] = machine.GetReference().AsReference();
+                        linkedGameObjectMap[machine.gameObject] = (reference, unit);
                     }
                 }
-                    break;
             }
 
 
             _linkScrollPosition = GUILayout.BeginScrollView(_linkScrollPosition, "box", GUILayout.ExpandHeight(false));
-            foreach (var ( go, reference ) in linkedGameObjectMap)
+            foreach (var (go, valueTuple) in linkedGameObjectMap)
             {
                 if (GUILayout.Button(go.name, EditorStyles.linkLabel))
                 {
                     Selection.activeObject = go;
                     EditorGUIUtility.PingObject(go);
-                    
-                    var unit = FindNode(reference, _activeBookmark.name);
-                    var subReference = UnitUtility.GetUnitGraphReference(reference, _activeBookmark.name);
+
+                    var (reference, unit) = valueTuple;
                     if (unit != null)
                     {
-                        UnitUtility.FocusUnit(subReference, unit);
+                        UnitUtility.FocusUnit(reference, unit);
                     }
                 }
             }
