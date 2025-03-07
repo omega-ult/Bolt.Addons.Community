@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 
 namespace Unity.VisualScripting.Community
@@ -17,19 +18,19 @@ namespace Unity.VisualScripting.Community
                 {
                     return reference;
                 }
-                
             }
+
             foreach (var (reference, unit) in TraverseStateGraphUnit(assetEntry))
             {
                 if (unit.ToString() == unitName)
                 {
                     return reference;
                 }
-                
             }
-            return null;
 
+            return null;
         }
+
         public static string GetGraphPath(GraphReference reference, string separator = "->", bool ignoreRoot = true)
         {
             var nodePath = reference;
@@ -398,8 +399,14 @@ namespace Unity.VisualScripting.Community
                     return $"{uEvent}";
                 case MissingType missingType:
                     return $"{missingType.formerType}";
+                case SwitchOnString switchOnString:
+                    return $"{string.Join(",", switchOnString.options)}";
+                case SwitchOnInteger switchOnInteger:
+                    return $"{string.Join(",", switchOnInteger.options)}";
+                case SwitchOnEnum switchOnEnum:
+                    return $"{switchOnEnum.enumType.Name}";
                 default:
-                    return null;
+                    break;
             }
 
             return null;

@@ -196,7 +196,7 @@ namespace Unity.VisualScripting.Community
         bool IsBookmarkValid(Bookmark bookmark)
         {
             var asset = AssetDatabase.LoadAssetAtPath<Object>(bookmark.assetPath);
-            return asset != null;
+            return asset != null && bookmark.type != null;
         }
 
         GraphReference LoadAssetReference(Bookmark bookmark)

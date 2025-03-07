@@ -158,7 +158,7 @@ namespace Unity.VisualScripting.Community
                     var pathNames = GetUnitPath(match.Reference);
                     var label = $"      {pathNames}{match.FullTypeName} : {match.MatchString}";
                     var tex = Icons.Icon(match.Unit.GetType());
-                    var unitIcon = new GUIContent(tex[IconSize.Small]) ;
+                    var unitIcon = new GUIContent(tex[IconSize.Small]);
                     unitIcon.text = label;
                     if (GUILayout.Button(unitIcon, EditorStyles.linkLabel))
                     {
@@ -242,7 +242,9 @@ namespace Unity.VisualScripting.Community
                 {
                     if (string.IsNullOrEmpty(nodePath.graph.title))
                     {
-                        prefix = nodePath.serializedObject != null ? nodePath.serializedObject.name : nodePath.graph.GetType().ToString().Split(".").Last();
+                        prefix = nodePath.serializedObject != null
+                            ? nodePath.serializedObject.name
+                            : nodePath.graph.GetType().ToString().Split(".").Last();
                     }
                     else
                     {
@@ -501,6 +503,36 @@ namespace Unity.VisualScripting.Community
                         matchRecord.MatchString = setMember.member.name;
                         fitField = true;
                     }
+                }
+            }
+
+            if (!fitField)
+            {
+                if (unit is SwitchOnString switchOnString)
+                {
+                    foreach (var option in switchOnString.options.Where(option => matchWord.IsMatch(option)))
+                    {
+                        matchRecord.Matches.Add(MatchType.Field);
+                        matchRecord.MatchString = option;
+                        fitField = true;
+                    }
+                } else if (unit is SwitchOnInteger switchOnInteger)
+                {
+                    foreach (var option in switchOnInteger.options.Where(option => matchWord.IsMatch(option.ToString())))
+                    {
+                        matchRecord.Matches.Add(MatchType.Field);
+                        matchRecord.MatchString = option.ToString();
+                        fitField = true;
+                    }
+                } else if (unit is SwitchOnEnum switchOnEnum)
+                {
+                     foreach (var option in switchOnEnum.enumType.GetEnumValues())
+                     {
+                         if (!matchWord.IsMatch(option.ToString())) continue;
+                         matchRecord.Matches.Add(MatchType.Field);
+                         matchRecord.MatchString = option.ToString();
+                         fitField = true;
+                     }                   
                 }
             }
 
