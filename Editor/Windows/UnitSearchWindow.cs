@@ -79,6 +79,11 @@ namespace Unity.VisualScripting.Community
 
         private void OnDisable()
         {
+            ClearResult();
+        }
+
+        void ClearResult()
+        {
             _matchObjects.Clear();
             _matchGraph.Clear();
             _matchScriptGraphMap.Clear();
@@ -93,9 +98,13 @@ namespace Unity.VisualScripting.Community
             Event e = Event.current;
             if (e.keyCode == KeyCode.Return)
             {
-                if (_pattern.Length > 1)
+                if (_pattern.Length > 1 && _pattern.Trim().Length > 1)
                 {
                     Search();
+                }
+                else
+                {
+                    ClearResult();
                 }
             }
 
