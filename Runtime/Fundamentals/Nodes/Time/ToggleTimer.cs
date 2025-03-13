@@ -180,19 +180,20 @@ namespace Unity.VisualScripting.Community
         private ControlOutput Pause(Flow flow)
         {
             var data = flow.stack.GetElementData<Data>(this);
+            flow.SetValue(elapsedSeconds, data.elapsed);
 
             data.paused = true;
 
-            return null;
+            return paused;
         }
 
         private ControlOutput Resume(Flow flow)
         {
             var data = flow.stack.GetElementData<Data>(this);
-
+            flow.SetValue(elapsedSeconds, data.elapsed);
             data.paused = false;
 
-            return null;
+            return started;
         }
 
         private ControlOutput Toggle(Flow flow)
@@ -205,9 +206,7 @@ namespace Unity.VisualScripting.Community
             }
             else
             {
-                data.paused = !data.paused;
-
-                return null;
+                return data.paused ? Resume(flow) : Pause(flow);
             }
         }
 
@@ -223,8 +222,8 @@ namespace Unity.VisualScripting.Community
 
             data.elapsed += data.unscaled ? Time.unscaledDeltaTime : Time.deltaTime;
 
-
             var stack = flow.PreserveStack();
+            flow.SetValue(elapsedSeconds, data.elapsed);
 
             flow.Invoke(tick);
 
