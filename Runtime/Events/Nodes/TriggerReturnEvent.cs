@@ -140,7 +140,7 @@ namespace Unity.VisualScripting.Community
 
                 var key = (argumentNames != null && i < argumentNames.Count && !string.IsNullOrEmpty(argumentNames[i]))
                     ? argumentNames[i]
-                    : "argument_" + i;
+                    : i.ToString();
                 var input = ValueInput(type, key);
                 arguments.Add(input);
                 Requirement(input, enter);
