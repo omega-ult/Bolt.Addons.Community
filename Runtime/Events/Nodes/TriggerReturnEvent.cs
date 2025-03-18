@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using UnityEngine.Serialization;
@@ -29,6 +30,33 @@ namespace Unity.VisualScripting.Community
         [Inspectable]
         [UnitHeaderInspectable("Arguments")]
         public int count { get { return _count; } set { _count = Mathf.Clamp(value, 0, 10); } }
+        
+        [SerializeAs(nameof(argumentNames))] private List<string> _argumentNames;
+
+        [Inspectable]
+        public List<string> argumentNames
+        {
+            get => _argumentNames;
+            set
+            {
+                value ??= new List<string>();
+                _argumentNames = value;
+            }
+        }
+
+
+        [SerializeAs(nameof(argumentTypes))] private List<Type> _argumentTypes;
+
+        [Inspectable]
+        public List<Type> argumentTypes
+        {
+            get => _argumentTypes;
+            set
+            {
+                value ??= new List<Type>();
+                _argumentTypes = value;
+            }
+        }
 
         /// <summary>
         /// Turns the event into a global event without a target.
@@ -106,7 +134,14 @@ namespace Unity.VisualScripting.Community
 
             for (int i = 0; i < count; i++)
             {
-                var input = ValueInput<object>(i.ToString());
+                var type = (argumentTypes != null && i < argumentTypes.Count && argumentTypes[i] != null)
+                    ? argumentTypes[i]
+                    : typeof(object);
+
+                var key = (argumentNames != null && i < argumentNames.Count && !string.IsNullOrEmpty(argumentNames[i]))
+                    ? argumentNames[i]
+                    : "argument_" + i;
+                var input = ValueInput(type, key);
                 arguments.Add(input);
                 Requirement(input, enter);
             }

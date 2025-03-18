@@ -13,51 +13,79 @@ namespace Unity.VisualScripting.Community
     [RenamedFrom("Bolt.Addons.Community.ReturnEvents.ReturnEvent")]
     public sealed class ReturnEvent : GlobalEventUnit<ReturnEventArg>
     {
-        [Serialize]
-        private int _count;
+        [Serialize] private int _count;
 
         /// <summary>
         /// The amount of arguments this event has.
         /// </summary>
         [Inspectable]
         [UnitHeaderInspectable("Arguments")]
-        public int count { get { return _count; } set { _count = Mathf.Clamp(value, 0, 10); } }
+        public int count
+        {
+            get { return _count; }
+            set { _count = Mathf.Clamp(value, 0, 10); }
+        }
+
+        [SerializeAs(nameof(argumentNames))] private List<string> _argumentNames;
+
+        [Inspectable]
+        public List<string> argumentNames
+        {
+            get => _argumentNames;
+            set
+            {
+                value ??= new List<string>();
+                _argumentNames = value;
+            }
+        }
+
+
+        [SerializeAs(nameof(argumentTypes))] private List<Type> _argumentTypes;
+
+        [Inspectable]
+        public List<Type> argumentTypes
+        {
+            get => _argumentTypes;
+            set
+            {
+                value ??= new List<Type>();
+                _argumentTypes = value;
+            }
+        }
 
         /// <summary>
         /// Turns the event into a global event without a target.
         /// </summary>
-        [UnitHeaderInspectable("Global")]
-        public bool global;
-        
+        [UnitHeaderInspectable("Global")] public bool global;
+
         /// <summary>
         /// Outputs the data wrapper, which contains the references needed for returning back to the trigger.
         /// </summary>
-        [DoNotSerialize]
-        public ValueOutput eventData;
+        [DoNotSerialize] public ValueOutput eventData;
 
         /// <summary>
         /// A list of argument ports.
         /// </summary>
-        [DoNotSerialize]
-        public List<ValueOutput> arguments = new List<ValueOutput>();
+        [DoNotSerialize] public List<ValueOutput> arguments = new List<ValueOutput>();
 
         /// <summary>
         /// The name of the event.
         /// </summary>
-        [DoNotSerialize]
-        [PortLabelHidden]
-        public ValueInput name;
+        [DoNotSerialize] [PortLabelHidden] public ValueInput name;
 
         /// <summary>
         /// The target receiver GameObject for this event.
         /// </summary>
-        [DoNotSerialize][PortLabelHidden][NullMeansSelf]
+        [DoNotSerialize] [PortLabelHidden] [NullMeansSelf]
         public ValueInput target;
 
         /// <summary>
         /// Overrides the hook name that the Event Bus calls to decipher different event types.
         /// </summary>
-        protected override string hookName { get { return "Return"; } }
+        protected override string hookName
+        {
+            get { return "Return"; }
+        }
 
         /// <summary>
         /// Defines the ports of this unit.
@@ -76,7 +104,14 @@ namespace Unity.VisualScripting.Community
 
             for (int i = 0; i < count; i++)
             {
-                arguments.Add(ValueOutput<object>(i.ToString()));
+                var type = (argumentTypes != null && i < argumentTypes.Count && argumentTypes[i] != null)
+                    ? argumentTypes[i]
+                    : typeof(object);
+
+                var key = (argumentNames != null && i < argumentNames.Count && !string.IsNullOrEmpty(argumentNames[i]))
+                    ? argumentNames[i]
+                    : "argument_" + i;
+                arguments.Add(ValueOutput(type, key));
             }
         }
 
@@ -87,7 +122,10 @@ namespace Unity.VisualScripting.Community
         {
             bool should = flow.GetValue<string>(name) == args.name;
 
-            if ((args.isCallback ? arguments.Count == args.arguments.Length : arguments.Count + 1 == args.arguments.Length || (arguments.Count == 0 && args.arguments.Length == 0)) && should)
+            if ((args.isCallback
+                    ? arguments.Count == args.arguments.Length
+                    : arguments.Count + 1 == args.arguments.Length ||
+                      (arguments.Count == 0 && args.arguments.Length == 0)) && should)
             {
                 if (args.global)
                 {
@@ -111,7 +149,7 @@ namespace Unity.VisualScripting.Community
 
             for (int i = 0; i < arguments.Count; i++)
             {
-                flow.SetValue(arguments[i], args.arguments[args.isCallback ? i : i+1]);
+                flow.SetValue(arguments[i], args.arguments[args.isCallback ? i : i + 1]);
             }
         }
 
@@ -123,12 +161,14 @@ namespace Unity.VisualScripting.Community
         /// <param name="name">The name of the event.</param>
         /// <param name="global">Is the event global to all Return Events? Will ignore the target GameObject. Target can be null in this case.</param>
         /// <param name="args">The arguments to send through.</param>
-        public static void Trigger(TriggerReturnEvent trigger, GameObject target, string name, bool global = false, params object[] args)
+        public static void Trigger(TriggerReturnEvent trigger, GameObject target, string name, bool global = false,
+            params object[] args)
         {
             EventBus.Trigger<ReturnEventArg>("Return", new ReturnEventArg(trigger, target, name, global, args));
         }
 
-        public static void Trigger(GameObject target, string name, Action<object> callback = null, bool global = false, params object[] args)
+        public static void Trigger(GameObject target, string name, Action<object> callback = null, bool global = false,
+            params object[] args)
         {
             EventBus.Trigger<ReturnEventArg>("Return", new ReturnEventArg(callback, target, name, global, args));
         }
