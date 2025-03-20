@@ -13,6 +13,13 @@ namespace Unity.VisualScripting.Community
         public ReturnEventWidget(FlowCanvas canvas, ReturnEvent unit) : base(canvas, unit)
         {
         }
+        
+#if VISUAL_SCRIPTING_DDK_1_9
+        protected override bool ShowMiniLabel => unit.trigger.hasValidConnection;
+        protected override string MiniLabel => unit.name.hasValidConnection ? base.MiniLabel : $"{unit.defaultValues[nameof(unit.name)]}";
+        protected override Color MiniLabelColor => ( Color.green + Color.gray );
+        
+#endif
 
         /// <summary>
         /// Sets the color of the ReturnEvent Unit to green.

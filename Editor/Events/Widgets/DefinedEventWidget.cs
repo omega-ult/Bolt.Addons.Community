@@ -1,48 +1,52 @@
-﻿
-//namespace Unity.VisualScripting.Community.DefinedEvents.Editor.Widgets
-//{
-//    //[Widget(typeof(TargettedDefinedEvent))]
-//    //public sealed class DefinedEventWidget : UnitWidget<TargettedDefinedEvent>
-//    //{
-//    //    public DefinedEventWidget(FlowCanvas canvas, TargettedDefinedEvent unit) : base(canvas, unit)
-//    //    {
-//    //        Debug.Log($"hi2");
-//    //    }
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
 
-//    //    protected override float GetHeaderAddonHeight(float width)
-//    //    {
-//    //        return EditorGUIUtility.singleLineHeight;
-//    //    }
+namespace Unity.VisualScripting.Community
+{
+    [Widget(typeof(DefinedEventNode))]
+    public sealed class DefinedEventWidget : UnitWidget<DefinedEventNode>
+    {
+        public DefinedEventWidget(FlowCanvas canvas, DefinedEventNode unit) : base(canvas, unit)
+        {
+        }
+        
+#if VISUAL_SCRIPTING_DDK_1_9
+        protected override NodeColorMix baseColor => NodeColor.Green;
+        protected override bool ShowMiniLabel => unit.trigger.hasValidConnection;
+        protected override string MiniLabel => unit.eventType == null ? base.MiniLabel : $"{unit.eventType.Name}";
+        protected override Color MiniLabelColor => ( Color.green + Color.gray );
+#endif
+        
+        protected override IEnumerable<DropdownOption> contextOptions
+        {
+            get
+            {
+                yield return new DropdownOption((Action)ConvertEvent, "Convert To Trigger");
 
-//    //    public override void BeforeFrame()
-//    //    {
-//    //        base.BeforeFrame();
+                foreach (var option in base.contextOptions)
+                {
+                    yield return option;
+                }
+            }
+        }
 
-//    //        if (GetHeaderAddonWidth() != headerAddonPosition.width ||
-//    //            GetHeaderAddonHeight(headerAddonPosition.width) != headerAddonPosition.height)
-//    //        {
-//    //            Reposition();
-//    //        }
-//    //    }
-
-//    //    protected override void DrawHeaderAddon()
-//    //    {
-//    //        using (LudiqGUIUtility.labelWidth.Override(75)) // For reflected inspectors / custom property drawers
-//    //        using (Inspector.adaptiveWidth.Override(true))
-//    //        {
-//    //            EditorGUI.BeginChangeCheck();
-
-//    //            if (unit.IsRestricted)
-//    //                LudiqGUI.Inspector(metadata["restrictedEventType"], headerAddonPosition, GUIContent.none);
-//    //            else
-//    //                LudiqGUI.Inspector(metadata["eventType"], headerAddonPosition, GUIContent.none);
-
-//    //            if (EditorGUI.EndChangeCheck())
-//    //            {
-//    //                unit.EnsureDefined();
-//    //                Reposition();
-//    //            }
-//    //        }
-//    //    }
-//    //}
-//}
+        private void ConvertEvent()
+        {
+            //copy old event args to new event args.
+            var preservation = UnitPreservation.Preserve(unit);
+            var newUnit = new TriggerDefinedEvent();
+            newUnit.eventType = unit.eventType;
+            newUnit.Define();
+            newUnit.guid = Guid.NewGuid();
+            newUnit.position = unit.position;
+            preservation.RestoreTo(newUnit);
+            var graph = unit.graph;
+            unit.graph.units.Remove(unit);
+            graph.units.Add(newUnit);
+            selection.Select(newUnit);
+            GUI.changed = true;
+            context.EndEdit();
+        }
+    }
+}

@@ -4,27 +4,19 @@ using UnityEngine;
 
 namespace Unity.VisualScripting.Community
 {
-    /// <summary>
-    /// The visuals for the TriggerReturnEvent Unit.
-    /// </summary>
-    [Widget(typeof(TriggerReturnEvent))]
-    public sealed class TriggerReturnEventWidget : UnitWidget<TriggerReturnEvent>
+    [Widget(typeof(TriggerDefinedEvent))]
+    public sealed class TriggerDefinedEventWidget : UnitWidget<TriggerDefinedEvent>
     {
-        public TriggerReturnEventWidget(FlowCanvas canvas, TriggerReturnEvent unit) : base(canvas, unit)
+        public TriggerDefinedEventWidget(FlowCanvas canvas, TriggerDefinedEvent unit) : base(canvas, unit)
         {
         }
-
         
 #if VISUAL_SCRIPTING_DDK_1_9
         protected override bool ShowMiniLabel => unit.enter.hasValidConnection;
-        protected override string MiniLabel => unit.name.hasValidConnection ? base.MiniLabel : $"{unit.defaultValues[nameof(unit.name)]}";
+        protected override string MiniLabel => unit.eventType == null ? base.MiniLabel : $"{unit.eventType.Name}";
         protected override Color MiniLabelColor => ( Color.yellow + Color.gray );
 #endif
-        /// <summary>
-        /// Sets the TriggerReturnEvent Units color to gray. Since it is an even unit under the hood, we need to make it look like it is not.
-        /// </summary>
-        protected override NodeColorMix baseColor => NodeColor.Gray;
-
+        
         protected override IEnumerable<DropdownOption> contextOptions
         {
             get
@@ -38,15 +30,12 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-
         private void ConvertEvent()
         {
-            //convert TriggerCustomEvent to CustomEvent
+            //copy old event args to new event args.
             var preservation = UnitPreservation.Preserve(unit);
-            var newUnit = new ReturnEvent();
-            newUnit.count = unit.count;
-            newUnit.argumentNames = new List<string>(unit.argumentNames);
-            newUnit.argumentTypes = new List<Type>(unit.argumentTypes);
+            var newUnit = new DefinedEventNode();
+            newUnit.eventType = unit.eventType;
             newUnit.Define();
             newUnit.guid = Guid.NewGuid();
             newUnit.position = unit.position;
@@ -55,6 +44,8 @@ namespace Unity.VisualScripting.Community
             unit.graph.units.Remove(unit);
             graph.units.Add(newUnit);
             selection.Select(newUnit);
+            GUI.changed = true;
+            context.EndEdit();
         }
     }
 }
