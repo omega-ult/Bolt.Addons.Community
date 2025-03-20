@@ -7,11 +7,11 @@
         {
         }
 
-        protected override void DefinedPort(IUnitPort port, UnitPortDescription description)
+        protected override void DefinedPort(IUnitPort port, UnitPortDescription portDescription)
         {
-            base.DefinedPort(port, description);
+            base.DefinedPort(port, portDescription);
 
-            description.showLabel = false;
+            portDescription.showLabel = false;
         }
 
         protected override EditorTexture DefaultIcon()

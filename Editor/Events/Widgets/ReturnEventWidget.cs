@@ -57,7 +57,6 @@ namespace Unity.VisualScripting.Community
             graph.units.Add(newUnit);
             selection.Select(newUnit);
             GUI.changed = true;
-            context.EndEdit();
         }
     }
 }

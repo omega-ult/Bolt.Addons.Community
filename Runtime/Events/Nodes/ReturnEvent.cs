@@ -108,9 +108,7 @@ namespace Unity.VisualScripting.Community
                     ? argumentTypes[i]
                     : typeof(object);
 
-                var key = (argumentNames != null && i < argumentNames.Count && !string.IsNullOrEmpty(argumentNames[i]))
-                    ? argumentNames[i]
-                    : i.ToString();
+                var key = i.ToString();
                 arguments.Add(ValueOutput(type, key));
             }
         }

@@ -5,22 +5,12 @@ namespace Unity.VisualScripting.Community
     /// <summary>
     /// A descriptor that assigns the ReturnEvents icon.
     /// </summary>
-    [Descriptor(typeof(ReturnEvent))]
-    public sealed class ReturnEventDescriptor : EventUnitDescriptor<ReturnEvent>
+    [Descriptor(typeof(TriggerReturnEvent))]
+    public sealed class TriggerReturnEventDescriptor : EventUnitDescriptor<TriggerReturnEvent>
     {
-        public ReturnEventDescriptor(ReturnEvent target) : base(target)
+        public TriggerReturnEventDescriptor(TriggerReturnEvent target) : base(target)
         {
 
-        }
-
-        protected override EditorTexture DefaultIcon()
-        {
-            return PathUtil.Load("return_event", CommunityEditorPath.Events);
-        }
-
-        protected override EditorTexture DefinedIcon()
-        {
-            return PathUtil.Load("return_event", CommunityEditorPath.Events);
         }
         
         protected override void DefinedPort(IUnitPort port, UnitPortDescription portDescription)
@@ -28,9 +18,9 @@ namespace Unity.VisualScripting.Community
             base.DefinedPort(port, portDescription);
 
             var skip = 0;
-            foreach (var (input, i) in unit.valueOutputs.Select((p, i) => (p, i)))
+            foreach (var (input, i) in unit.valueInputs.Select((p, i) => (p, i)))
             {
-                if (input.key == "data")
+                if (input.key is "name" or "target")
                 {
                     skip++;
                     continue;
