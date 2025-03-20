@@ -4,25 +4,24 @@ using UnityEngine;
 
 namespace Unity.VisualScripting.Community
 {
-    [Widget(typeof(DefinedEventNode))]
-    public sealed class DefinedEventWidget : UnitWidget<DefinedEventNode>
+    [Widget(typeof(TriggerGlobalDefinedEvent))]
+    public sealed class TriggerGlobalDefinedEventWidget : UnitWidget<TriggerGlobalDefinedEvent>
     {
-        public DefinedEventWidget(FlowCanvas canvas, DefinedEventNode unit) : base(canvas, unit)
+        public TriggerGlobalDefinedEventWidget(FlowCanvas canvas, TriggerGlobalDefinedEvent unit) : base(canvas, unit)
         {
         }
         
 #if VISUAL_SCRIPTING_DDK_1_9
-        protected override NodeColorMix baseColor => NodeColor.Green;
         protected override bool ShowMiniLabel => true;
         protected override string MiniLabel => unit.eventType == null ? base.MiniLabel : $"{unit.eventType.Name}";
-        protected override Color MiniLabelColor => ( Color.green + Color.gray );
+        protected override Color MiniLabelColor => ( Color.yellow + Color.gray );
 #endif
         
         protected override IEnumerable<DropdownOption> contextOptions
         {
             get
             {
-                yield return new DropdownOption((Action)ConvertEvent, "Convert To Trigger");
+                yield return new DropdownOption((Action)ConvertEvent, "Convert To Receiver");
 
                 foreach (var option in base.contextOptions)
                 {
@@ -35,7 +34,7 @@ namespace Unity.VisualScripting.Community
         {
             //copy old event args to new event args.
             var preservation = UnitPreservation.Preserve(unit);
-            var newUnit = new TriggerDefinedEvent();
+            var newUnit = new DefinedEventNode();
             newUnit.eventType = unit.eventType;
             newUnit.Define();
             newUnit.guid = Guid.NewGuid();

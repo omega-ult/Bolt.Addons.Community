@@ -4,10 +4,10 @@ using UnityEngine;
 
 namespace Unity.VisualScripting.Community
 {
-    [Widget(typeof(DefinedEventNode))]
-    public sealed class DefinedEventWidget : UnitWidget<DefinedEventNode>
+    [Widget(typeof(GlobalDefinedEventNode))]
+    public sealed class GlobalDefinedEventWidget : UnitWidget<GlobalDefinedEventNode>
     {
-        public DefinedEventWidget(FlowCanvas canvas, DefinedEventNode unit) : base(canvas, unit)
+        public GlobalDefinedEventWidget(FlowCanvas canvas, GlobalDefinedEventNode unit) : base(canvas, unit)
         {
         }
         
@@ -35,7 +35,7 @@ namespace Unity.VisualScripting.Community
         {
             //copy old event args to new event args.
             var preservation = UnitPreservation.Preserve(unit);
-            var newUnit = new TriggerDefinedEvent();
+            var newUnit = new TriggerGlobalDefinedEvent();
             newUnit.eventType = unit.eventType;
             newUnit.Define();
             newUnit.guid = Guid.NewGuid();

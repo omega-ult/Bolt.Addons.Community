@@ -15,7 +15,7 @@ namespace Unity.VisualScripting.Community
         }
         
 #if VISUAL_SCRIPTING_DDK_1_9
-        protected override bool ShowMiniLabel => unit.trigger.hasValidConnection;
+        protected override bool ShowMiniLabel => true;
         protected override string MiniLabel => unit.name.hasValidConnection ? base.MiniLabel : $"{unit.defaultValues[nameof(unit.name)]}";
         protected override Color MiniLabelColor => ( Color.green + Color.gray );
         
