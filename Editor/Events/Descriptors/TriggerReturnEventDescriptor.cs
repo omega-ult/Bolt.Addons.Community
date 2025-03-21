@@ -17,6 +17,7 @@ namespace Unity.VisualScripting.Community
         {
             base.DefinedPort(port, portDescription);
 
+            if (unit.argumentNames == null || unit.argumentNames.Count == 0) return;
             var skip = 0;
             foreach (var (input, i) in unit.valueInputs.Select((p, i) => (p, i)))
             {
