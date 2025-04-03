@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,6 +9,7 @@ using UnityEngine.UIElements;
 using Unity.VisualScripting.Community.Libraries.Humility;
 using UnityEditor.SceneManagement;
 using UnityEditor.Search;
+using Object = UnityEngine.Object;
 
 namespace Unity.VisualScripting.Community
 {
@@ -25,15 +27,12 @@ namespace Unity.VisualScripting.Community
         }
 
 
-        private void OnEnable()
-        {
-        }
-
         void DrawVariables(GameObject target, VariableDeclarations vars, string type, string prefix = "")
         {
             if (vars.Any())
             {
                 var enums = vars.GetEnumerator();
+                using IDisposable enums1 = enums;
                 GUILayout.Label($"{prefix}{type} Variables:");
                 while (enums.MoveNext())
                 {
@@ -159,11 +158,10 @@ namespace Unity.VisualScripting.Community
             // Debug.Log(graphSelection);
             if (activeGraph != null)
             {
-                if (activeGraph.GetType() == typeof(FlowGraph))
+                if (activeGraph is FlowGraph flowGraph)
                 {
-                    var mainGraph = activeGraph as FlowGraph;
                     // GUILayout.Label(activeGraph.GetType().ToString());
-                    DrawVariables(null, mainGraph.variables, "Graph");
+                    DrawVariables(null, flowGraph.variables, "Graph");
                 }
 
                 if (showSubGraph)
@@ -172,22 +170,19 @@ namespace Unity.VisualScripting.Community
                     var prefix = "||> ";
                     foreach (var node in graphElems)
                     {
-                        if (node.GetType() == typeof(SubgraphUnit))
+                        if (node is not SubgraphUnit subUnit) continue;
+                        GUILayout.Label($"Graph Variables of {subUnit.nest.graph.title} / {subUnit}");
+                        var graph = subUnit.nest.macro;
+                        if (graph != null)
                         {
-                            var subUnit = node as SubgraphUnit;
-                            GUILayout.Label($"Graph Variables of {subUnit.nest.graph.title} / {subUnit}");
-                            var graph = subUnit.nest.macro;
-                            if (graph != null)
-                            {
-                                var vars = VisualScripting.Variables.Graph(graph.GetReference());
-                                DrawVariables(null, vars, "Graph", prefix);
-                            }
+                            var vars = VisualScripting.Variables.Graph(graph.GetReference());
+                            DrawVariables(null, vars, "Graph", prefix);
+                        }
 
-                            var embed = subUnit.nest.embed;
-                            if (embed != null)
-                            {
-                                DrawVariables(null, embed.variables, "Embed", prefix);
-                            }
+                        var embed = subUnit.nest.embed;
+                        if (embed != null)
+                        {
+                            DrawVariables(null, embed.variables, "Embed", prefix);
                         }
                     }
                 }
