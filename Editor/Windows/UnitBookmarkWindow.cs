@@ -48,8 +48,8 @@ namespace Unity.VisualScripting.Community
             public string Meta;
         }
 
-        private string _unitFilterString = "";
-        private string _graphFilterString = "";
+        // private string _unitFilterString = "";
+        // private string _graphFilterString = "";
         [SerializeField] List<Bookmark> _bookmarkList = new();
 
         Vector2 _unitScrollPosition = Vector2.zero;

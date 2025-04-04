@@ -544,7 +544,7 @@ namespace Unity.VisualScripting.Community
                     }
                 }
                 // 检查是否是旧版VariableUnit
-                else if (unit is VariableUnit varUnit)
+                else if (unit is UnifiedVariableUnit varUnit)
                 {
                     bool isMatchingKind = false;
 
@@ -582,7 +582,7 @@ namespace Unity.VisualScripting.Community
                             Path = UnitUtility.GetGraphPath(graphRef),
                             Kind = kind,
                             Name = unit.ToString().Split('#')[0],
-                            DefaultName = varUnit.defaultName
+                            DefaultName = varUnit.defaultValues[nameof(name)].ToString()
                         };
 
                         if (!string.IsNullOrEmpty(varInfo.DefaultName))
@@ -626,7 +626,7 @@ namespace Unity.VisualScripting.Community
                     }
                 }
                 // 检查是否是旧版VariableUnit
-                else if (unit is VariableUnit varUnit)
+                else if (unit is UnifiedVariableUnit varUnit)
                 {
                     bool isMatchingKind = false;
 
@@ -664,7 +664,7 @@ namespace Unity.VisualScripting.Community
                             Path = UnitUtility.GetGraphPath(graphRef),
                             Kind = kind,
                             Name = unit.ToString().Split('#')[0],
-                            DefaultName = varUnit.defaultName
+                            DefaultName = varUnit.defaultValues[nameof(name)].ToString()
                         };
 
                         if (!string.IsNullOrEmpty(varInfo.DefaultName))
@@ -711,7 +711,7 @@ namespace Unity.VisualScripting.Community
                 }
                 // 对于旧版VariableUnit，我们无法直接修改defaultName，因为它是只读的
                 // 但我们可以修改name端口的默认值
-                else if (variable.Unit is VariableUnit varUnit)
+                else if (variable.Unit is UnifiedVariableUnit varUnit)
                 {
                     var namePort = varUnit.valueInputs.FirstOrDefault(p => p.key == "name");
                     if (namePort != null && namePort.connection == null)
