@@ -524,16 +524,14 @@ namespace Unity.VisualScripting.Community
                         matchRecord.MatchString = option.ToString();
                         fitField = true;
                     }
-                } else if (unit is SwitchOnEnum switchOnEnum)
-                {
-                     foreach (var option in switchOnEnum.enumType.GetEnumValues())
-                     {
-                         if (!matchWord.IsMatch(option.ToString())) continue;
-                         matchRecord.Matches.Add(MatchType.Field);
-                         matchRecord.MatchString = option.ToString();
-                         fitField = true;
-                     }                   
-                }
+                } else if (unit is SwitchOnEnum { enumType: not null } switchOnEnum)
+                    foreach (var option in switchOnEnum.enumType.GetEnumValues())
+                    {
+                        if (!matchWord.IsMatch(option.ToString())) continue;
+                        matchRecord.Matches.Add(MatchType.Field);
+                        matchRecord.MatchString = option.ToString();
+                        fitField = true;
+                    }
             }
 
             foreach (var kvp in unit.defaultValues)
