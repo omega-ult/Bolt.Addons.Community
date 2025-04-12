@@ -19,7 +19,6 @@ namespace Unity.VisualScripting.Community
             window.Show();
         }
 
-        private string _searchFilter = "";
         private string _filterText = "";
         private Vector2 _scrollPosition;
         private bool _searchInGraphAssets = true;
@@ -27,10 +26,10 @@ namespace Unity.VisualScripting.Community
         private bool _searchInScenes = true;
         private List<UnitExceptionInfo> _exceptionInfos = new List<UnitExceptionInfo>();
         private List<UnitExceptionInfo> _filteredExceptionInfos = new List<UnitExceptionInfo>();
+        private HashSet<string> _uniqueUnitNames = new HashSet<string>();
         private bool _isSearching = false;
         private float _searchProgress = 0f;
         private string _searchStatus = "";
-        private bool _isFiltering = false;
 
         private class UnitExceptionInfo
         {
@@ -61,7 +60,6 @@ namespace Unity.VisualScripting.Community
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("全盘搜索", GUILayout.Width(100)))
             {
-                _searchFilter = ""; // 清空搜索过滤条件
                 StartSearch();
             }
             EditorGUILayout.EndHorizontal();
@@ -115,7 +113,10 @@ namespace Unity.VisualScripting.Community
                 EditorGUILayout.BeginHorizontal();
                 info.IsExpanded = EditorGUILayout.Foldout(info.IsExpanded, $"{info.UnitName}", true);
                 GUILayout.FlexibleSpace();
-                GUILayout.Label(info.AssetPath, EditorStyles.miniLabel);
+                if (GUILayout.Button(info.AssetPath, EditorStyles.miniLabel))
+                {
+                    FocusOnUnit(info);
+                }
                 EditorGUILayout.EndHorizontal();
 
                 if (info.IsExpanded)
@@ -127,20 +128,7 @@ namespace Unity.VisualScripting.Community
                     GUILayout.Label("Exception:", EditorStyles.boldLabel);
                     EditorGUILayout.TextArea(info.ExceptionMessage, EditorStyles.wordWrappedLabel);
 
-                    // Stack trace (optional)
-                    // if (!string.IsNullOrEmpty(info.StackTrace))
-                    // {
-                    //     GUILayout.Label("Stack Trace:", EditorStyles.boldLabel);
-                    //     EditorGUILayout.TextArea(info.StackTrace, EditorStyles.wordWrappedLabel);
-                    // }
 
-                    // Buttons
-                    EditorGUILayout.BeginHorizontal();
-                    if (GUILayout.Button("Focus Unit", GUILayout.Width(100)))
-                    {
-                        FocusOnUnit(info);
-                    }
-                    EditorGUILayout.EndHorizontal();
                 }
 
                 GUILayout.EndVertical();
@@ -154,6 +142,7 @@ namespace Unity.VisualScripting.Community
         private void StartSearch()
         {
             _exceptionInfos.Clear();
+            _uniqueUnitNames.Clear();
             _isSearching = true;
             _searchProgress = 0f;
             _searchStatus = "正在准备搜索...";
@@ -338,14 +327,16 @@ namespace Unity.VisualScripting.Community
         {
             if (unit == null || unit.definitionException == null) return;
 
+            var unitName = unit.ToString();
+            if (_uniqueUnitNames.Contains(unitName)) return;
+            _uniqueUnitNames.Add(unitName);
+
             var exceptionMessage = unit.definitionException.Message;
-            // var stackTrace = unit.definitionException.StackTrace;
 
             var info = new UnitExceptionInfo
             {
                 UnitName = unit.ToString(),
                 ExceptionMessage = exceptionMessage,
-                // StackTrace = stackTrace,
                 AssetPath = assetPath,
                 GraphPath = UnitUtility.GetGraphPath(reference),
                 Reference = reference,
@@ -380,7 +371,6 @@ namespace Unity.VisualScripting.Community
             {
                 if (regex.IsMatch(info.UnitName) ||
                     regex.IsMatch(info.ExceptionMessage) ||
-                    // regex.IsMatch((info.StackTrackTrace.Contains(_filterText)) ||
                     regex.IsMatch(info.AssetPath) ||
                     info.GraphPath.Contains(_filterText))
                 {
