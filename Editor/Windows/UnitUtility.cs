@@ -404,7 +404,7 @@ namespace Unity.VisualScripting.Community
                 case SwitchOnInteger switchOnInteger:
                     return $"{string.Join(",", switchOnInteger.options)}";
                 case SwitchOnEnum switchOnEnum:
-                    return $"{switchOnEnum.enumType.Name}";
+                    return $"{switchOnEnum.enumType?.Name}";
                 default:
                     break;
             }
