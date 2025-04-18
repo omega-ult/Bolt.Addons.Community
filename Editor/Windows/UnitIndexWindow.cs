@@ -41,25 +41,37 @@ namespace Unity.VisualScripting.Community
         Vector2 _historyScrollPosition = Vector2.zero;
 
         [SerializeField] private int historyCount = 50;
+        [SerializeField] private float leftPanelWidth = 250f; // 添加左侧面板宽度变量
+        [SerializeField] private float historyPanelHeight = 300f; // 添加历史面板高度变量
+        private bool isDragging = false; // 是否正在拖拽
+        private bool isDraggingHistory = false; // 是否正在拖拽历史区域
 
-        [MenuItem("Window/UVS Community/Node Index")]
+        [MenuItem("Window/UVS Community/Unit Index")]
         public static void Open()
         {
             var window = GetWindow<UnitIndexWindow>();
-            window.titleContent = new GUIContent("Node Index");
+            window.titleContent = new GUIContent("Unit Index");
         }
 
         private void OnGUI()
         {
             GUILayout.BeginHorizontal();
 
-            GUILayout.BeginVertical(GUILayout.Width(250));
+            // 使用动态宽度而不是固定值
+            GUILayout.BeginVertical(GUILayout.Width(leftPanelWidth));
             DrawGraphList();
             DrawHistory();
             GUILayout.EndVertical();
 
-            // 如果有选中的 Script Graph 文件，显示额外信息
-            // Debug.Log(selectedAsset);
+            // 添加拖拽分隔线
+            Rect dragRect = new Rect(leftPanelWidth + 2, 0, 5, position.height);
+            EditorGUI.DrawRect(dragRect, new Color(0.1f, 0.1f, 0.1f, 0.5f));
+
+            // 处理拖拽事件
+            HandleDragEvents(dragRect);
+
+            // 鼠标悬停时改变光标
+            EditorGUIUtility.AddCursorRect(dragRect, MouseCursor.ResizeHorizontal);
 
             // Debug.Log(selectedAsset.Keys);
             GUILayout.BeginVertical();
@@ -115,7 +127,8 @@ namespace Unity.VisualScripting.Community
             // 如果没有记录的 Script Graph 文件，显示提示
             if (_graphList.Count == 0)
             {
-                GUILayout.Label("Select any Graph Asset or Prefab to start.");
+                // GUILayout.Label("Select any Graph Asset or Prefab to start.");
+                return;
             }
             else
             {
@@ -205,7 +218,7 @@ namespace Unity.VisualScripting.Community
             historyCount = EditorGUILayout.IntField("HistoryCount", historyCount, GUILayout.ExpandHeight(false));
             _historyScrollPosition =
                 GUILayout.BeginScrollView(_historyScrollPosition, "box", GUILayout.ExpandHeight(false),
-                    GUILayout.MaxHeight(300));
+                    GUILayout.Height(historyPanelHeight));
 
             for (var index = 0; index < _historyList.Count; index++)
             {
@@ -255,6 +268,17 @@ namespace Unity.VisualScripting.Community
             }
 
             GUILayout.EndScrollView();
+            
+            // 添加拖拽分隔线
+            Rect lastRect = GUILayoutUtility.GetLastRect();
+            Rect dragRect = new Rect(lastRect.x, lastRect.y + lastRect.height, lastRect.width, 5);
+            EditorGUI.DrawRect(dragRect, new Color(0.1f, 0.1f, 0.1f, 0.5f));
+            
+            // 处理拖拽事件
+            HandleHistoryDragEvents(dragRect);
+            
+            // 鼠标悬停时改变光标
+            EditorGUIUtility.AddCursorRect(dragRect, MouseCursor.ResizeVertical);
         }
 
         bool FilterDisplayGraph(Regex pattern, GraphInfo graph)
@@ -364,7 +388,7 @@ namespace Unity.VisualScripting.Community
                 {
                     // pass
                     // failed if exit from prefab mode.
-                } 
+                }
             }
 
             if (fetched != null)
@@ -543,6 +567,80 @@ namespace Unity.VisualScripting.Community
                 {
                     _historyList = _historyList.TakeLast(historyCount).ToList();
                 }
+            }
+        }
+
+        private void HandleDragEvents(Rect dragRect)
+        {
+            Event evt = Event.current;
+
+            switch (evt.type)
+            {
+                case EventType.MouseDown:
+                    if (dragRect.Contains(evt.mousePosition))
+                    {
+                        isDragging = true;
+                        evt.Use();
+                    }
+                    break;
+
+                case EventType.MouseUp:
+                    if (isDragging)
+                    {
+                        isDragging = false;
+                        evt.Use();
+                    }
+                    break;
+
+                case EventType.MouseDrag:
+                    if (isDragging)
+                    {
+                        leftPanelWidth += evt.delta.x;
+
+                        // 限制最小和最大宽度
+                        leftPanelWidth = Mathf.Clamp(leftPanelWidth, 250f, position.width * 0.7f);
+
+                        Repaint();
+                        evt.Use();
+                    }
+                    break;
+            }
+        }
+
+        private void HandleHistoryDragEvents(Rect dragRect)
+        {
+            Event evt = Event.current;
+            
+            switch (evt.type)
+            {
+                case EventType.MouseDown:
+                    if (dragRect.Contains(evt.mousePosition))
+                    {
+                        isDraggingHistory = true;
+                        evt.Use();
+                    }
+                    break;
+                    
+                case EventType.MouseUp:
+                    if (isDraggingHistory)
+                    {
+                        isDraggingHistory = false;
+                        evt.Use();
+                    }
+                    break;
+                    
+                case EventType.MouseDrag:
+                    if (isDraggingHistory)
+                    {
+                        historyPanelHeight += evt.delta.y;
+                        
+                        // 限制最小和最大高度
+                        historyPanelHeight = Mathf.Clamp(historyPanelHeight, 100f, position.height * 0.7f);
+                        
+                        Repaint();
+                        evt.Use();
+                    }
+                    break;
             }
         }
     }

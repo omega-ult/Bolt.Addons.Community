@@ -57,11 +57,11 @@ namespace Unity.VisualScripting.Community
 
         private Bookmark _activeBookmark;
 
-        [MenuItem("Window/UVS Community/Node Bookmark")]
+        [MenuItem("Window/UVS Community/Unit Bookmark")]
         public static void Open()
         {
             var window = GetWindow<UnitBookmarkWindow>();
-            window.titleContent = new GUIContent("Node Bookmark");
+            window.titleContent = new GUIContent("Unit Bookmark");
         }
 
         private void OnGUI()
