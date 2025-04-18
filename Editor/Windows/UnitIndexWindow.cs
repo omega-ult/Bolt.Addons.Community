@@ -31,7 +31,6 @@ namespace Unity.VisualScripting.Community
         }
 
         [SerializeField] private List<GraphInfo> _graphList = new();
-        private List<GraphInfo> _historyList = new();
         private GraphInfo _selectedGraphInfo;
         private string _unitFilterString = "";
         private string _graphFilterString = "";
@@ -44,7 +43,6 @@ namespace Unity.VisualScripting.Community
         [SerializeField] private float leftPanelWidth = 250f; // 添加左侧面板宽度变量
         [SerializeField] private float historyPanelHeight = 300f; // 添加历史面板高度变量
         private bool isDragging = false; // 是否正在拖拽
-        private bool isDraggingHistory = false; // 是否正在拖拽历史区域
 
         [MenuItem("Window/UVS Community/Unit Index")]
         public static void Open()
@@ -60,12 +58,11 @@ namespace Unity.VisualScripting.Community
             // 使用动态宽度而不是固定值
             GUILayout.BeginVertical(GUILayout.Width(leftPanelWidth));
             DrawGraphList();
-            DrawHistory();
             GUILayout.EndVertical();
 
             // 添加拖拽分隔线
-            Rect dragRect = new Rect(leftPanelWidth + 2, 0, 5, position.height);
-            EditorGUI.DrawRect(dragRect, new Color(0.1f, 0.1f, 0.1f, 0.5f));
+            Rect dragRect = new Rect(leftPanelWidth, 0, 5, position.height);
+            EditorGUI.DrawRect(dragRect, new Color(0.1f, 0.1f, 0.1f, 0.0f));
 
             // 处理拖拽事件
             HandleDragEvents(dragRect);
@@ -174,7 +171,6 @@ namespace Unity.VisualScripting.Community
                             PingObjectInProject(assetInfo.assetPath);
                             // var detail = GetDetail(assetInfo.AssetPath);
                             _selectedGraphInfo = assetInfo;
-                            AddSelectionHistory();
                         }
                     }
                     else if (assetInfo.source.Equals("Embed"))
@@ -200,7 +196,6 @@ namespace Unity.VisualScripting.Community
                                 // 用户点击某个按钮时，跳转并高亮显示该文件
                                 PingObjectInProject(gameObjectPath);
                                 _selectedGraphInfo = assetInfo;
-                                AddSelectionHistory();
                             }
                         }
                     }
@@ -211,74 +206,6 @@ namespace Unity.VisualScripting.Community
 
                 GUILayout.EndScrollView();
             }
-        }
-
-        void DrawHistory()
-        {
-            historyCount = EditorGUILayout.IntField("HistoryCount", historyCount, GUILayout.ExpandHeight(false));
-            _historyScrollPosition =
-                GUILayout.BeginScrollView(_historyScrollPosition, "box", GUILayout.ExpandHeight(false),
-                    GUILayout.Height(historyPanelHeight));
-
-            for (var index = 0; index < _historyList.Count; index++)
-            {
-                var assetInfo = _historyList[index];
-                if (assetInfo.source.Equals("Graph"))
-                {
-                    string fileName = System.IO.Path.GetFileNameWithoutExtension(assetInfo.assetPath);
-
-                    // 使用按钮显示每个 Script Graph 文件路径
-                    EditorGUIUtility.SetIconSize(new Vector2(16, 16));
-                    var icon = EditorGUIUtility.ObjectContent(assetInfo.reference, assetInfo.type);
-                    icon.text = fileName;
-                    if (GUILayout.Button(icon))
-                    {
-                        // 用户点击某个按钮时，跳转并高亮显示该文件
-                        PingObjectInProject(assetInfo.assetPath);
-                        // var detail = GetDetail(assetInfo.AssetPath);
-                        _selectedGraphInfo = assetInfo;
-                    }
-                }
-                else if (assetInfo.source.Equals("Embed"))
-                {
-                    if (assetInfo.reference == null)
-                    {
-                        _historyList.RemoveAt(index);
-                        if (_selectedGraphInfo == assetInfo)
-                        {
-                            _selectedGraphInfo = null;
-                        }
-
-                        GUILayout.Label("Missing");
-                    }
-                    else
-                    {
-                        string fileName = assetInfo.reference.name;
-                        string gameObjectPath = SceneManager.GetActiveScene().path;
-
-                        // 使用按钮显示每个 Script Graph 文件路径
-                        if (GUILayout.Button(fileName))
-                        {
-                            // 用户点击某个按钮时，跳转并高亮显示该文件
-                            PingObjectInProject(gameObjectPath);
-                            _selectedGraphInfo = assetInfo;
-                        }
-                    }
-                }
-            }
-
-            GUILayout.EndScrollView();
-            
-            // 添加拖拽分隔线
-            Rect lastRect = GUILayoutUtility.GetLastRect();
-            Rect dragRect = new Rect(lastRect.x, lastRect.y + lastRect.height, lastRect.width, 5);
-            EditorGUI.DrawRect(dragRect, new Color(0.1f, 0.1f, 0.1f, 0.5f));
-            
-            // 处理拖拽事件
-            HandleHistoryDragEvents(dragRect);
-            
-            // 鼠标悬停时改变光标
-            EditorGUIUtility.AddCursorRect(dragRect, MouseCursor.ResizeVertical);
         }
 
         bool FilterDisplayGraph(Regex pattern, GraphInfo graph)
@@ -553,21 +480,8 @@ namespace Unity.VisualScripting.Community
             }
 
             if (!dirty) return;
-            AddSelectionHistory();
-            SortHistory();
+            // SortHistory();
             Repaint();
-        }
-
-        void AddSelectionHistory()
-        {
-            if (_selectedGraphInfo != null)
-            {
-                _historyList.Add(_selectedGraphInfo);
-                if (_historyList.Count > historyCount)
-                {
-                    _historyList = _historyList.TakeLast(historyCount).ToList();
-                }
-            }
         }
 
         private void HandleDragEvents(Rect dragRect)
@@ -607,41 +521,5 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-        private void HandleHistoryDragEvents(Rect dragRect)
-        {
-            Event evt = Event.current;
-            
-            switch (evt.type)
-            {
-                case EventType.MouseDown:
-                    if (dragRect.Contains(evt.mousePosition))
-                    {
-                        isDraggingHistory = true;
-                        evt.Use();
-                    }
-                    break;
-                    
-                case EventType.MouseUp:
-                    if (isDraggingHistory)
-                    {
-                        isDraggingHistory = false;
-                        evt.Use();
-                    }
-                    break;
-                    
-                case EventType.MouseDrag:
-                    if (isDraggingHistory)
-                    {
-                        historyPanelHeight += evt.delta.y;
-                        
-                        // 限制最小和最大高度
-                        historyPanelHeight = Mathf.Clamp(historyPanelHeight, 100f, position.height * 0.7f);
-                        
-                        Repaint();
-                        evt.Use();
-                    }
-                    break;
-            }
-        }
     }
 }
