@@ -24,7 +24,6 @@ namespace Unity.VisualScripting.Community
             public string type;
             public string name;
             public string meta;
-            public DateTime timestamp;
 
             public string DisplayLabel
             {
@@ -206,7 +205,6 @@ namespace Unity.VisualScripting.Community
                     scenePath = scenePath,
                     assetPath = assetPath,
                     name = uName,
-                    timestamp = DateTime.Now
                 };
 
                 var info = BuildUnitInfo(entry);

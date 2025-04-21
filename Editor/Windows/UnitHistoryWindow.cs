@@ -157,9 +157,6 @@ namespace Unity.VisualScripting.Community
                         }
                     }
                 }
-                
-                // 显示时间戳
-                GUILayout.Label(entry.timestamp.ToString("MM-dd HH:mm"), GUILayout.Width(80));
             }
             else
             {
