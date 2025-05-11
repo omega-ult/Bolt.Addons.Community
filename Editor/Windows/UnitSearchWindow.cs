@@ -70,11 +70,11 @@ namespace Unity.VisualScripting.Community
         private Vector2 _scrollViewRoot;
 
 
-        [MenuItem("Window/UVS Community/Search Node")]
+        [MenuItem("Window/UVS Community/Search Unit")]
         public static void Open()
         {
             var window = GetWindow<UnitSearchWindow>();
-            window.titleContent = new GUIContent("Search Node");
+            window.titleContent = new GUIContent("Search Unit");
         }
 
         private void OnDisable()
