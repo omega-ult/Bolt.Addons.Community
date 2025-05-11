@@ -25,30 +25,36 @@ namespace Unity.VisualScripting.Community
             Reference
         }
 
+        enum EntrySource
+        {
+            GraphAsset,
+            SceneEmbedded,
+            PrefabEmbedded
+        }
+
+        class UnitContainer
+        {
+            public string ScenePath;
+            public string AssetPath;
+            public EntrySource Source;
+            public List<MatchUnit> Units;
+        }
+
         class MatchUnit
         {
             public List<MatchType> Matches;
-            public ScriptGraphAsset ScriptGraphAsset;
-            public StateGraphAsset StateGraphAsset;
             public GraphReference Reference;
+            public string ScenePath;
+            public string AssetPath;
+            public EntrySource Source;
             public string FullTypeName;
             public string MatchString;
+
             public IUnit Unit;
-            public string AssetName => ScriptGraphAsset != null ? ScriptGraphAsset.name : StateGraphAsset.name;
         }
 
-        // only match reference
-        class MatchGraph
-        {
-            public ScriptGraphAsset ScriptGraphAsset;
-            public StateGraphAsset StateGraphAsset;
-            public GraphReference Reference;
-            public string MatchString;
-            public Graph Graph;
-            public string AssetName => ScriptGraphAsset != null ? ScriptGraphAsset.name : StateGraphAsset.name;
-        }
 
-        private string _filterGraph = "";
+        private string _filterContainer = "";
         private string _pattern = "";
 
         private bool _caseSensitive = true;
@@ -56,18 +62,25 @@ namespace Unity.VisualScripting.Community
         private bool _matchType = true;
         private bool _matchMethod = true;
         private bool _matchField = true;
+
         private bool _matchReference = true;
-        private bool _showGraph = true;
-        private List<MatchUnit> _matchObjects = new();
-        private List<MatchGraph> _matchGraph = new();
-        private Dictionary<ScriptGraphAsset, List<MatchUnit>> _matchScriptGraphMap = new();
-        private List<ScriptGraphAsset> _sortedScriptGraphKey = new();
-        private Dictionary<StateGraphAsset, List<MatchUnit>> _matchStateGraphMap = new();
-        private List<StateGraphAsset> _sortedStateGraphKey = new();
+
+        // 添加搜索选项
+        private bool _searchInGraphAssets = true;
+        private bool _searchInPrefabs = true;
+        private bool _searchInScenes = true;
+        private bool _isSearching = false;
+        private float _searchProgress = 0f;
+        private string _searchStatus = "";
+
+        private Dictionary<string, List<UnitContainer>> _unitContainerMap = new();
 
 
         // scroll view position
         private Vector2 _scrollViewRoot;
+        private static Color _graphColor = new Color(0.5f, 0.8f, 0.6f);
+        private static Color _prefabColor = new Color(0.2f, 0.7f, 0.9f);
+        private static Color _sceneColor = new Color(0.7f, 0.7f, 0.7f);
 
 
         [MenuItem("Window/UVS Community/Search Unit")]
@@ -84,12 +97,7 @@ namespace Unity.VisualScripting.Community
 
         void ClearResult()
         {
-            _matchObjects.Clear();
-            _matchGraph.Clear();
-            _matchScriptGraphMap.Clear();
-            _sortedScriptGraphKey.Clear();
-            _matchStateGraphMap.Clear();
-            _sortedStateGraphKey.Clear();
+            _unitContainerMap.Clear();
         }
 
         private void OnGUI()
@@ -112,7 +120,7 @@ namespace Unity.VisualScripting.Community
             GUILayout.Label("Find", GUILayout.ExpandWidth(false));
             _pattern = GUILayout.TextField(_pattern);
             GUILayout.Label("In", GUILayout.ExpandWidth(false));
-            _filterGraph = GUILayout.TextField(_filterGraph);
+            _filterContainer = GUILayout.TextField(_filterContainer);
             _caseSensitive = GUILayout.Toggle(_caseSensitive, "Case", GUILayout.ExpandWidth(false));
             _wordMatch = GUILayout.Toggle(_wordMatch, "Word", GUILayout.ExpandWidth(false));
             if (GUILayout.Button("Search", GUILayout.ExpandWidth(false)))
@@ -123,6 +131,13 @@ namespace Unity.VisualScripting.Community
 
             GUILayout.EndHorizontal();
 
+            // 添加搜索选项
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("搜索范围:", GUILayout.ExpandWidth(false));
+            _searchInGraphAssets = GUILayout.Toggle(_searchInGraphAssets, "Graph Assets", GUILayout.ExpandWidth(false));
+            _searchInPrefabs = GUILayout.Toggle(_searchInPrefabs, "Prefabs", GUILayout.ExpandWidth(false));
+            _searchInScenes = GUILayout.Toggle(_searchInScenes, "Scenes", GUILayout.ExpandWidth(false));
+            GUILayout.EndHorizontal();
 
             // find arguments.
             GUILayout.BeginHorizontal();
@@ -130,97 +145,29 @@ namespace Unity.VisualScripting.Community
             _matchMethod = GUILayout.Toggle(_matchMethod, "Method", GUILayout.ExpandWidth(false));
             _matchField = GUILayout.Toggle(_matchField, "Field", GUILayout.ExpandWidth(false));
             _matchReference = GUILayout.Toggle(_matchReference, "Reference", GUILayout.ExpandWidth(false));
-            _showGraph = GUILayout.Toggle(_showGraph, "Graph", GUILayout.ExpandWidth(false));
+            // _showGraph = GUILayout.Toggle(_showGraph, "Graph", GUILayout.ExpandWidth(false));
             GUILayout.EndHorizontal();
+
+            // 显示搜索进度
+            if (_isSearching)
+            {
+                EditorGUI.ProgressBar(EditorGUILayout.GetControlRect(false, 20), _searchProgress, _searchStatus);
+            } 
 
             GUILayout.BeginVertical("box");
             _scrollViewRoot = GUILayout.BeginScrollView(_scrollViewRoot);
 
             Regex matchFile = null;
-            if (_filterGraph.Length != 0)
-                matchFile = new Regex(_filterGraph, RegexOptions.IgnoreCase);
-            var empty = true;
-            // for flow graph asset.
-            foreach (var key in _sortedScriptGraphKey)
+            if (_filterContainer.Length != 0)
+                matchFile = new Regex(_filterContainer, RegexOptions.IgnoreCase);
+            var containers = FilterContainer(matchFile).ToArray();
+            foreach (var container in containers)
             {
-                if (matchFile != null && !matchFile.IsMatch(key.name)) continue;
-                var list = _matchScriptGraphMap[key];
-                // check show items
-                if (!ShouldShowItem(list)) continue;
-                EditorGUIUtility.SetIconSize(new Vector2(16, 16));
-                var icon = EditorGUIUtility.ObjectContent(key, typeof(ScriptGraphAsset));
-                GUILayout.Label(icon);
-                // GUILayout.Label(key.name);
-                foreach (var match in list)
-                {
-                    // if(match.Unit)
-                    if (match.Unit.graph == null) continue;
-                    var pathNames = GetUnitPath(match.Reference);
-                    var label = $"      {pathNames}{match.FullTypeName} : {match.MatchString}";
-                    var tex = Icons.Icon(match.Unit.GetType());
-                    var unitIcon = new GUIContent(tex[IconSize.Small]);
-                    unitIcon.text = label;
-                    if (GUILayout.Button(unitIcon, EditorStyles.linkLabel))
-                    {
-                        FocusMatchUnit(match);
-                    }
-                }
-
-                empty = false;
-            }
-
-            // for state graph asset.
-            foreach (var key in _sortedStateGraphKey)
-            {
-                if (matchFile != null && !matchFile.IsMatch(key.name)) continue;
-                var list = _matchStateGraphMap[key];
-                // check show items
-                if (!ShouldShowItem(list)) continue;
-                EditorGUIUtility.SetIconSize(new Vector2(16, 16));
-                var icon = EditorGUIUtility.ObjectContent(key, typeof(ScriptGraphAsset));
-                GUILayout.Label(icon);
-                // GUILayout.Label(key.name);
-                foreach (var match in list)
-                {
-                    // var parents = match.StateParents.Select(x => x == null ? "" : x.nest.graph.title).ToList();
-                    // parents.Add(match.FlowGraph.title);
-                    var pathNames = GetUnitPath(match.Reference);
-                    var label = $"      {pathNames}{match.FullTypeName} : {match.MatchString}";
-                    if (GUILayout.Button(label, EditorStyles.linkLabel))
-                    {
-                        FocusMatchUnit(match);
-                    }
-                }
-
-                empty = false;
-            }
-
-            if (_showGraph)
-            {
-                foreach (var item in _matchGraph)
-                {
-                    EditorGUIUtility.SetIconSize(new Vector2(16, 16));
-                    if (item.ScriptGraphAsset != null)
-                    {
-                        var icon = EditorGUIUtility.ObjectContent(item.ScriptGraphAsset, typeof(ScriptGraphAsset));
-                        GUILayout.Label(icon);
-                    }
-                    else
-                    {
-                        var icon = EditorGUIUtility.ObjectContent(item.StateGraphAsset, typeof(StateGraphAsset));
-                        GUILayout.Label(icon);
-                    }
-
-                    if (GUILayout.Button($"      {item.AssetName}", EditorStyles.linkLabel))
-                    {
-                        FocusMatchGraph(item);
-                    }
-
-                    empty = false;
-                }
+                DrawContainer(container);
             }
 
 
+            var empty = containers.Length == 0;
             if (empty)
             {
                 GUILayout.Label("No result found.");
@@ -230,199 +177,346 @@ namespace Unity.VisualScripting.Community
             GUILayout.EndVertical();
         }
 
-        string GetUnitPath(GraphReference reference)
+        IEnumerable<UnitContainer> FilterContainer(Regex matchContainer)
         {
-            var nodePath = reference;
-            var pathNames = "";
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            while (nodePath != null)
+            foreach (var (key, containers) in _unitContainerMap)
             {
-                var prefix = "::";
-                if (nodePath.graph != null)
+                if (matchContainer != null && !matchContainer.IsMatch(key))
+                    continue;
+                foreach (var container in containers)
                 {
-                    if (string.IsNullOrEmpty(nodePath.graph.title))
-                    {
-                        prefix = nodePath.serializedObject != null
-                            ? nodePath.serializedObject.name
-                            : nodePath.graph.GetType().ToString().Split(".").Last();
-                    }
-                    else
-                    {
-                        prefix = nodePath.graph.title;
-                    }
-
-                    prefix += "->";
+                    yield return container;
                 }
-
-                pathNames = prefix + pathNames; //
-                nodePath = nodePath.ParentReference(false);
             }
+        }
 
-            return pathNames;
+        void DrawContainer(UnitContainer container)
+        {
+            GUILayout.BeginHorizontal();
+            EditorGUIUtility.SetIconSize(new Vector2(16, 16));
+            switch (container.Source)
+            {
+                case EntrySource.GraphAsset:
+                    GUI.color = _graphColor;
+                    var graph = AssetDatabase.LoadMainAssetAtPath(container.AssetPath);
+                    var graphIcon = EditorGUIUtility.ObjectContent(graph, graph.GetType());
+                    graphIcon.text = container.AssetPath;
+                    if (GUILayout.Button(graphIcon, GUILayout.ExpandWidth(false)))
+                    {
+                        var asset = AssetDatabase.LoadAssetAtPath<Object>(container.AssetPath);
+                        if (asset != null)
+                        {
+                            EditorGUIUtility.PingObject(asset);
+                        }
+                    }
+                    GUI.color = Color.white;
+                    break;
+                case EntrySource.PrefabEmbedded:
+                    GUI.color = _prefabColor;
+                    var prefab = AssetDatabase.LoadMainAssetAtPath(container.AssetPath);
+                    var prefabIcon = EditorGUIUtility.ObjectContent(prefab, prefab.GetType());
+                    prefabIcon.text = container.AssetPath;
+                    if (GUILayout.Button(prefabIcon, GUILayout.ExpandWidth(false)))
+                    {
+                        var asset = AssetDatabase.LoadAssetAtPath<GameObject>(container.AssetPath);
+                        if (asset != null)
+                        {
+                            EditorGUIUtility.PingObject(asset);
+                        }
+                    }
+
+                    GUI.color = Color.white;
+                    break;
+                case EntrySource.SceneEmbedded:
+                    GUI.color = _sceneColor;
+                    var scene = AssetDatabase.LoadMainAssetAtPath(container.ScenePath);
+                    var sceneIcon = EditorGUIUtility.ObjectContent(scene, scene.GetType());
+                    sceneIcon.text = container.ScenePath;
+                    if (GUILayout.Button(sceneIcon, GUILayout.ExpandWidth(false)))
+                    {
+                        var asset = AssetDatabase.LoadAssetAtPath<Object>(container.ScenePath);
+                        if (asset != null)
+                        {
+                            EditorGUIUtility.PingObject(asset);
+                        }
+                    }
+                    GUI.color = Color.white;
+                    break;
+            }
+            GUILayout.EndHorizontal();
+            
+            GUILayout.BeginVertical();
+            foreach (var unit in container.Units)
+            {
+                var label = $"  {unit.FullTypeName} : {unit.MatchString}";
+                if (GUILayout.Button(label, EditorStyles.linkLabel))
+                {
+                    UnitUtility.FocusUnit(unit.Reference, unit.Unit);
+                }
+            }
+            GUILayout.EndVertical();
+            GUILayout.Space(5);
         }
 
 
         private void Search()
         {
-            _matchObjects.Clear();
-            _matchGraph.Clear();
-            _matchScriptGraphMap.Clear();
-            _sortedScriptGraphKey.Clear();
-            _matchStateGraphMap.Clear();
-            _sortedStateGraphKey.Clear();
+            ClearResult();
+
+            _isSearching = true;
+            _searchProgress = 0f;
+            _searchStatus = "正在准备搜索...";
+
             var pattern = _pattern;
             if (_wordMatch)
                 pattern = $@"\b{Regex.Escape(pattern)}\b";
 
             var matchWord = new Regex(pattern, _caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase);
-            // for script graphs.
-            // begin of script graph
-            var guids = AssetDatabase.FindAssets("t:ScriptGraphAsset", null);
-            foreach (var guid in guids)
+
+            // 使用 EditorApplication.delayCall 异步执行搜索
+            EditorApplication.delayCall += () =>
             {
-                // continue;
+                try
+                {
+                    // 搜索 Graph Assets
+                    if (_searchInGraphAssets)
+                    {
+                        SearchInGraphAssets(matchWord);
+                    }
+
+                    // 搜索 Prefabs
+                    if (_searchInPrefabs)
+                    {
+                        SearchInPrefabs(matchWord);
+                    }
+
+                    // 搜索 Scenes
+                    if (_searchInScenes)
+                    {
+                        SearchInScenes(matchWord);
+                    }
+                }
+                finally
+                {
+                    _isSearching = false;
+                    _searchStatus = "搜索完成";
+                    Repaint();
+                }
+            };
+        }
+
+        private void SearchInGraphAssets(Regex matchWord)
+        {
+            _searchStatus = "正在搜索 Graph Assets...";
+            // 搜索 ScriptGraphAsset
+            var guids = AssetDatabase.FindAssets("t:ScriptGraphAsset", null);
+
+            for (var i = 0; i < guids.Length; i++)
+            {
+                var guid = guids[i];
+                _searchProgress = (float)i / (guids.Length * 2); // 考虑到还有 StateGraphAsset
+                _searchStatus = $"正在搜索 ScriptGraphAsset... ({i + 1}/{guids.Length})";
+
                 var assetPath = AssetDatabase.GUIDToAssetPath(guid);
                 var asset = AssetDatabase.LoadAssetAtPath<ScriptGraphAsset>(assetPath);
-                if (asset.GetReference().graph is not FlowGraph flowGraph) continue;
-                var baseRef = asset.GetReference().AsReference();
-                foreach (var element in UnitUtility.TraverseFlowGraphUnit(baseRef))
+                if (asset == null || asset.GetReference().graph is not FlowGraph flowGraph) continue;
+
+                var unitContainer = new UnitContainer()
                 {
-                    var reference = element.Item1;
-                    var unit = element.Item2;
-                    var newMatch = CheckMatchUnit(matchWord, unit);
-                    if (newMatch == null) continue;
-                    newMatch.ScriptGraphAsset = asset;
-                    newMatch.Reference = reference;
-                    if (_matchScriptGraphMap.TryGetValue(newMatch.ScriptGraphAsset, out var list))
+                    ScenePath = "",
+                    AssetPath = assetPath,
+                    Source = EntrySource.GraphAsset,
+                    Units = UnitUtility.TraverseFlowGraphUnit(asset.GetReference().AsReference())
+                        .Select(x => CheckMatchUnit(matchWord, x.Item1, x.Item2))
+                        .Where(x => x != null).ToList()
+                };
+                if (unitContainer.Units.Count > 0)
+                {
+                    if (_unitContainerMap.TryGetValue(assetPath, out var list))
                     {
-                        list.Add(newMatch);
+                        list.Add(unitContainer);
                     }
                     else
                     {
-                        _matchScriptGraphMap[newMatch.ScriptGraphAsset] = new List<MatchUnit>() { newMatch };
+                        _unitContainerMap[assetPath] = new List<UnitContainer>() { unitContainer };
                     }
                 }
 
-                // add self first
-                var baseMatch = CheckMatchGraph(matchWord, flowGraph, assetPath);
-                if (baseMatch != null)
-                {
-                    baseMatch.ScriptGraphAsset = asset;
-                    baseMatch.Reference = baseRef;
-                    _matchGraph.Add(baseMatch);
-                }
-
-                foreach (var (reference, graph) in UnitUtility.TraverseFlowGraph(baseRef))
-                {
-                    var newMatch = CheckMatchGraph(matchWord, graph, null);
-                    if (newMatch == null) continue;
-                    newMatch.ScriptGraphAsset = asset;
-                    newMatch.Reference = reference;
-                    _matchGraph.Add(newMatch);
-                }
+                // 定期刷新窗口以显示进度
+                if (i % 10 == 0) Repaint();
             }
 
-            _sortedScriptGraphKey = _matchScriptGraphMap.Keys.ToList();
-            _sortedScriptGraphKey.Sort((a, b) => String.Compare(a.name, b.name, StringComparison.Ordinal));
-            // end of script graph
-
-            // begin of script graph
+            // 搜索 StateGraphAsset
             guids = AssetDatabase.FindAssets("t:StateGraphAsset", null);
-            foreach (var guid in guids)
+            for (int i = 0; i < guids.Length; i++)
             {
+                var guid = guids[i];
+                _searchProgress = 0.5f + (float)i / (guids.Length * 2); // 从 0.5 开始
+                _searchStatus = $"正在搜索 StateGraphAsset... ({i + 1}/{guids.Length})";
+
+                // 这里添加 StateGraphAsset 的搜索逻辑，与原代码类似
+                // ... 省略 StateGraphAsset 搜索逻辑 ...
+
                 var assetPath = AssetDatabase.GUIDToAssetPath(guid);
                 var asset = AssetDatabase.LoadAssetAtPath<StateGraphAsset>(assetPath);
+                if (asset == null || asset.GetReference().graph is not StateGraph stateGraph) continue;
 
-                if (asset.GetReference().graph is not StateGraph stateGraph) continue;
-                var baseRef = asset.GetReference().AsReference();
-                foreach (var element in UnitUtility.TraverseStateGraphUnit(baseRef))
+                var unitContainer = new UnitContainer()
                 {
-                    var reference = element.Item1;
-                    var unit = element.Item2;
-                    var newMatch = CheckMatchUnit(matchWord, unit);
-                    if (newMatch == null) continue;
-                    newMatch.StateGraphAsset = asset;
-                    newMatch.Reference = reference;
-                    _matchObjects.Add(newMatch);
-                    if (_matchStateGraphMap.TryGetValue(newMatch.StateGraphAsset, out var list))
+                    ScenePath = "",
+                    AssetPath = assetPath,
+                    Source = EntrySource.GraphAsset,
+                    Units = UnitUtility.TraverseStateGraphUnit(asset.GetReference().AsReference())
+                        .Select(x => CheckMatchUnit(matchWord, x.Item1, x.Item2))
+                        .Where(x => x != null).ToList()
+                };
+                if (unitContainer.Units.Count > 0)
+                {
+                    if (_unitContainerMap.TryGetValue(assetPath, out var list))
                     {
-                        list.Add(newMatch);
+                        list.Add(unitContainer);
                     }
                     else
                     {
-                        _matchStateGraphMap[newMatch.StateGraphAsset] = new List<MatchUnit>() { newMatch };
+                        _unitContainerMap[assetPath] = new List<UnitContainer>() { unitContainer };
                     }
                 }
 
-                // add self first
-                var baseMatch = CheckMatchGraph(matchWord, stateGraph, assetPath);
-                if (baseMatch != null)
-                {
-                    baseMatch.StateGraphAsset = asset;
-                    baseMatch.Reference = baseRef;
-                    _matchGraph.Add(baseMatch);
-                }
-
-                foreach (var (reference, graph) in UnitUtility.TraverseStateGraph(baseRef))
-                {
-                    var newMatch = CheckMatchGraph(matchWord, graph, null);
-                    if (newMatch == null) continue;
-                    newMatch.StateGraphAsset = asset;
-                    newMatch.Reference = reference;
-                    _matchGraph.Add(newMatch);
-                }
+                // 定期刷新窗口以显示进度
+                if (i % 10 == 0) Repaint();
             }
-
-            _sortedStateGraphKey = _matchStateGraphMap.Keys.ToList();
-            _sortedStateGraphKey.Sort((a, b) => String.Compare(a.name, b.name, StringComparison.Ordinal));
-
-            _matchGraph.Sort((a, b) =>
-                String.Compare(a.AssetName, b.AssetName, StringComparison.Ordinal));
         }
 
-        MatchGraph CheckMatchGraph(Regex matchWord, Graph graph, string assetPath = null)
+        void ProcessGameObject(string scenePath, string assetPath, EntrySource source, GameObject gameObject,
+            Regex matchWord)
         {
-            string element = null;
-
-            if (assetPath != null)
+            // 搜索 ScriptMachine
+            var scriptMachines = gameObject.GetComponentsInChildren<ScriptMachine>(true);
+            foreach (var machine in scriptMachines)
             {
-                var assetName = Path.GetFileNameWithoutExtension(assetPath);
-                if (matchWord.IsMatch(assetName))
+                if (machine.graph == null || machine.nest?.source == GraphSource.Macro) continue;
+                var reference = GraphReference.New(machine, false);
+                // 处理 FlowGraph
+                var container = new UnitContainer()
                 {
-                    element = assetName;
+                    ScenePath = scenePath,
+                    AssetPath = assetPath,
+                    Source = source,
+                    Units = UnitUtility.TraverseFlowGraphUnit(reference)
+                        .Select(x => CheckMatchUnit(matchWord, x.Item1, x.Item2))
+                        .Where(x => x != null).ToList()
+                };
+                if (container.Units.Count <= 0) continue;
+                var storeKey = container.AssetPath;
+                if (source == EntrySource.SceneEmbedded)
+                {
+                    storeKey = container.ScenePath;
+                }
+
+                if (_unitContainerMap.TryGetValue(storeKey, out var list))
+                {
+                    list.Add(container);
+                }
+                else
+                {
+                    _unitContainerMap[storeKey] = new List<UnitContainer>() { container };
                 }
             }
-            else if (graph.title != null && matchWord.IsMatch(graph.title))
-            {
-                element = graph.title;
-            }
-            else if (graph.summary != null && matchWord.IsMatch(graph.summary))
-            {
-                element = graph.summary;
-            }
 
-            if (element != null)
+            // 搜索 StateMachine
+            var stateMachines = gameObject.GetComponentsInChildren<StateMachine>(true);
+            foreach (var machine in stateMachines)
             {
-                return new MatchGraph()
+                if (machine.graph == null || machine.nest?.source == GraphSource.Macro) continue;
+                var reference = GraphReference.New(machine, false);
+
+                // 处理 FlowGraph
+                var container = new UnitContainer()
                 {
-                    ScriptGraphAsset = null,
-                    StateGraphAsset = null,
-                    MatchString = element,
-                    Graph = graph,
+                    ScenePath = scenePath,
+                    AssetPath = assetPath,
+                    Source = source,
+                    Units = UnitUtility.TraverseStateGraphUnit(reference)
+                        .Select(x => CheckMatchUnit(matchWord, x.Item1, x.Item2))
+                        .Where(x => x != null).ToList()
                 };
-            }
+                if (container.Units.Count <= 0) continue;
+                var storeKey = container.AssetPath;
+                if (source == EntrySource.SceneEmbedded)
+                {
+                    storeKey = container.ScenePath;
+                }
 
-            return null;
+                if (_unitContainerMap.TryGetValue(storeKey, out var list))
+                {
+                    list.Add(container);
+                }
+                else
+                {
+                    _unitContainerMap[storeKey] = new List<UnitContainer>() { container };
+                }
+            }
+        }
+
+        private void SearchInPrefabs(Regex matchWord)
+        {
+            _searchStatus = "正在搜索 Prefabs...";
+            var prefabs = AssetDatabase.FindAssets("t:Prefab")
+                .Select(guid => AssetDatabase.GUIDToAssetPath(guid))
+                .ToArray();
+
+            for (int i = 0; i < prefabs.Length; i++)
+            {
+                var assetPath = prefabs[i];
+                _searchProgress = (float)i / prefabs.Length;
+                _searchStatus = $"正在搜索 Prefabs... ({i + 1}/{prefabs.Length})";
+
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+                if (prefab == null) continue;
+                ProcessGameObject("", assetPath, EntrySource.PrefabEmbedded, prefab, matchWord);
+                // 定期刷新窗口以显示进度
+                if (i % 10 == 0) Repaint();
+            }
         }
 
 
-        MatchUnit CheckMatchUnit(Regex matchWord, Unit unit)
+        private void SearchInScenes(Regex matchWord)
+        {
+            _searchStatus = "正在搜索 Scenes...";
+            var scenes = AssetDatabase.FindAssets("t:Scene")
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .ToArray();
+
+            for (var i = 0; i < scenes.Length; i++)
+            {
+                var scenePath = scenes[i];
+                _searchProgress = (float)i / scenes.Length;
+                _searchStatus = $"正在搜索 Scenes... ({i + 1}/{scenes.Length})";
+
+                // 我们不实际加载场景，只检查它是否已经加载
+                var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(scenePath);
+                if (scene.isLoaded)
+                {
+                    // 搜索 ScriptMachine
+                    foreach (var gameObject in scene.GetRootGameObjects())
+                    {
+                        ProcessGameObject(scenePath, "", EntrySource.SceneEmbedded, gameObject, matchWord);
+                    }
+                }
+
+                // 定期刷新窗口以显示进度
+                if (i % 10 == 0) Repaint();
+            }
+        }
+
+        MatchUnit CheckMatchUnit(Regex matchWord, GraphReference reference,  Unit unit)
         {
             var matchRecord = new MatchUnit()
             {
                 Matches = new List<MatchType>(),
-                ScriptGraphAsset = null,
-                StateGraphAsset = null,
+                // ScriptGraphAsset = null,
+                // StateGraphAsset = null,
+                Reference = reference,
                 Unit = unit
             };
             // brutal force to create, this can be optimized, but when?
@@ -508,30 +602,52 @@ namespace Unity.VisualScripting.Community
 
             if (!fitField)
             {
-                if (unit is SwitchOnString switchOnString)
+                switch (unit)
                 {
-                    foreach (var option in switchOnString.options.Where(option => matchWord.IsMatch(option)))
+                    case SwitchOnString switchOnString:
                     {
-                        matchRecord.Matches.Add(MatchType.Field);
-                        matchRecord.MatchString = option;
-                        fitField = true;
+                        foreach (var option in switchOnString.options.Where(option => matchWord.IsMatch(option)))
+                        {
+                            matchRecord.Matches.Add(MatchType.Field);
+                            matchRecord.MatchString = option;
+                        }
+
+                        break;
                     }
-                } else if (unit is SwitchOnInteger switchOnInteger)
-                {
-                    foreach (var option in switchOnInteger.options.Where(option => matchWord.IsMatch(option.ToString())))
+                    case SwitchOnInteger switchOnInteger:
                     {
-                        matchRecord.Matches.Add(MatchType.Field);
-                        matchRecord.MatchString = option.ToString();
-                        fitField = true;
+                        foreach (var option in
+                                 switchOnInteger.options.Where(option => matchWord.IsMatch(option.ToString())))
+                        {
+                            matchRecord.Matches.Add(MatchType.Field);
+                            matchRecord.MatchString = option.ToString();
+                        }
+
+                        break;
                     }
-                } else if (unit is SwitchOnEnum { enumType: not null } switchOnEnum)
-                    foreach (var option in switchOnEnum.enumType.GetEnumValues())
+                    case SwitchOnEnum { enumType: not null } switchOnEnum:
                     {
-                        if (!matchWord.IsMatch(option.ToString())) continue;
-                        matchRecord.Matches.Add(MatchType.Field);
-                        matchRecord.MatchString = option.ToString();
-                        fitField = true;
+                        foreach (var option in switchOnEnum.enumType.GetEnumValues())
+                        {
+                            if (!matchWord.IsMatch(option.ToString())) continue;
+                            matchRecord.Matches.Add(MatchType.Field);
+                            matchRecord.MatchString = option.ToString();
+                        }
+
+                        break;
                     }
+                    case UnifiedVariableUnit { defaultValues: not null } unifiedVariableUnit:
+                    {
+                        var str = (string)unifiedVariableUnit.defaultValues[nameof(unifiedVariableUnit.name)];
+                        if (matchWord.IsMatch(str))
+                        {
+                            matchRecord.Matches.Add(MatchType.Field);
+                            matchRecord.MatchString = str;
+                        }
+
+                        break;
+                    }
+                }
             }
 
             foreach (var kvp in unit.defaultValues)
@@ -575,51 +691,6 @@ namespace Unity.VisualScripting.Community
             }
 
             return false;
-        }
-
-        void FocusMatchGraph(MatchGraph match)
-        {
-            if (match.ScriptGraphAsset != null)
-            {
-                EditorGUIUtility.PingObject(match.ScriptGraphAsset);
-                Selection.activeObject = match.ScriptGraphAsset;
-            }
-            else if (match.StateGraphAsset != null)
-            {
-                EditorGUIUtility.PingObject(match.StateGraphAsset);
-                Selection.activeObject = match.StateGraphAsset;
-            }
-            // Locate 
-
-            // open
-            GraphReference reference = match.Reference;
-            GraphWindow.OpenActive(reference);
-        }
-
-        void FocusMatchUnit(MatchUnit match)
-        {
-            if (match.ScriptGraphAsset != null)
-            {
-                EditorGUIUtility.PingObject(match.ScriptGraphAsset);
-                Selection.activeObject = match.ScriptGraphAsset;
-            }
-            else if (match.StateGraphAsset != null)
-            {
-                EditorGUIUtility.PingObject(match.StateGraphAsset);
-                Selection.activeObject = match.StateGraphAsset;
-            }
-            // Locate 
-
-            // open
-            GraphReference reference = match.Reference;
-            GraphWindow.OpenActive(reference);
-
-            // focus
-            var context = reference.Context();
-            if (context == null)
-                return;
-            context.BeginEdit();
-            context.canvas?.ViewElements(((IGraphElement)match.Unit).Yield());
         }
     }
 }

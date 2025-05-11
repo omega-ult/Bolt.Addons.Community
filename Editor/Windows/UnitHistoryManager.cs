@@ -171,20 +171,6 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-        // Get the full path of a transform in the scene hierarchy
-        private static string GetTransformPath(Transform transform)
-        {
-            string path = transform.name;
-            Transform parent = transform.parent;
-
-            while (parent != null)
-            {
-                path = parent.name + "/" + path;
-                parent = parent.parent;
-            }
-
-            return path;
-        }
 
         private static void RecordSelectionHistory(HashSet<IUnit> selectedUnits)
         {
@@ -195,11 +181,7 @@ namespace Unity.VisualScripting.Community
 
             var scenePath = "";
             var assetPath = AssetDatabase.GetAssetPath(reference.serializedObject);
-            var entryType = reference.machine == null ? EntrySource.GraphAsset : EntrySource.PrefabEmbedded;
-            if (reference.machine != null)
-            {
-                entryType = reference.machine.nest.source == GraphSource.Embed ? EntrySource.PrefabEmbedded : EntrySource.GraphAsset;
-            }
+            var embeddedSource = EntrySource.GraphAsset;
             if (PrefabStageUtility.GetCurrentPrefabStage() != null)
             {
                 if (string.IsNullOrEmpty(assetPath))
@@ -207,6 +189,8 @@ namespace Unity.VisualScripting.Community
                     var stage = PrefabStageUtility.GetCurrentPrefabStage();
                     assetPath = stage.assetPath;
                 }
+
+                embeddedSource = EntrySource.PrefabEmbedded;
             }
             else if (string.IsNullOrEmpty(assetPath))
             {
@@ -216,13 +200,15 @@ namespace Unity.VisualScripting.Community
                 scenePath = obj.scene.path;
                 if (!string.IsNullOrEmpty(scenePath))
                 {
-                    assetPath = GetTransformPath(obj.transform);
+                    assetPath = UnitUtility.GetTransformPath(obj.transform);
                     if (string.IsNullOrEmpty(assetPath))
                     {
                         Debug.LogWarning("Unsupported method in non serialized graph.");
                         return;
                     }
-                    entryType = reference.machine.nest.source == GraphSource.Embed ? EntrySource.SceneEmbedded : EntrySource.GraphAsset;
+                    
+                    
+                    embeddedSource = EntrySource.SceneEmbedded;
                 }
 
                 if (window.context.isPrefabInstance)
@@ -230,6 +216,11 @@ namespace Unity.VisualScripting.Community
                     Debug.LogWarning("Unsupported method in non serialized graph.");
                     return;
                 }
+            }
+            var entryType =  EntrySource.GraphAsset ;
+            if (reference.machine != null)
+            {
+                entryType = reference.machine.nest.source == GraphSource.Embed ? embeddedSource : EntrySource.GraphAsset;
             }
 
             // 只处理第一个节点，多选时只记录第一个

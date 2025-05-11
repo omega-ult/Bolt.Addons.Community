@@ -166,6 +166,20 @@ namespace Unity.VisualScripting.Community
             }
         }
 
+        // Get the full path of a transform in the scene hierarchy
+        public static string GetTransformPath(Transform transform)
+        {
+            string path = transform.name;
+            Transform parent = transform.parent;
+
+            while (parent != null)
+            {
+                path = parent.name + "/" + path;
+                parent = parent.parent;
+            }
+
+            return path;
+        }
         // for graph node only
         public static IEnumerable<(GraphReference, Graph)> TraverseStateGraph(GraphReference graphReference)
         {
