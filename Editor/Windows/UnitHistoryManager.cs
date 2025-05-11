@@ -202,7 +202,6 @@ namespace Unity.VisualScripting.Community
             }
             if (PrefabStageUtility.GetCurrentPrefabStage() != null)
             {
-                Debug.Log(reference.machine.nest.source);
                 if (string.IsNullOrEmpty(assetPath))
                 {
                     var stage = PrefabStageUtility.GetCurrentPrefabStage();
