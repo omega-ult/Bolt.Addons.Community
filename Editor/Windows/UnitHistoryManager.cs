@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Object = UnityEngine.Object;
 using System.IO;
 using UnityEditor.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Unity.VisualScripting.Community
 {
@@ -15,6 +16,12 @@ namespace Unity.VisualScripting.Community
     [InitializeOnLoad]
     public static class UnitHistoryManager
     {
+        public enum EntrySource
+        {
+            GraphAsset,
+            SceneEmbedded,
+            PrefabEmbedded
+        }
         [Serializable]
         public class UnitHistoryEntry
         {
@@ -24,6 +31,7 @@ namespace Unity.VisualScripting.Community
             public string type;
             public string name;
             public string meta;
+            public EntrySource entrySource;
 
             public string DisplayLabel
             {
@@ -60,12 +68,24 @@ namespace Unity.VisualScripting.Community
 
         private static HashSet<IUnit> _lastSelectedUnits = new HashSet<IUnit>();
 
+        private static double _lastCheckTime = -1f;
+
+        // 检查间隔时间(秒)
+        private const float CHECK_INTERVAL = 0.5f;
+
+        // 当前时间
         // 标记是否是从历史窗口触发的跳转，防止从历史窗口点击时产生新的历史记录
         private static bool _isJumpingFromHistory = false;
 
         // 静态构造函数，在编辑器加载时自动执行
         static UnitHistoryManager()
         {
+            RestartListen();
+        }
+
+        public static void RestartListen()
+        {
+            EditorApplication.update -= CheckGraphWindowSelection;
             EditorApplication.update += CheckGraphWindowSelection;
         }
 
@@ -111,10 +131,17 @@ namespace Unity.VisualScripting.Community
                 HistoryData.instance.historyEntries.RemoveAt(index);
             }
         }
+        // 上次检查时间
 
         private static void CheckGraphWindowSelection()
         {
             if (GraphWindow.active == null || GraphWindow.active.context == null) return;
+            if (EditorApplication.timeSinceStartup - _lastCheckTime < CHECK_INTERVAL)
+            {
+                return;
+            }
+            _lastCheckTime = EditorApplication.timeSinceStartup;
+
 
             var currentSelection = GraphWindow.active.context.selection;
             if (currentSelection == null) return;
@@ -168,9 +195,23 @@ namespace Unity.VisualScripting.Community
 
             var scenePath = "";
             var assetPath = AssetDatabase.GetAssetPath(reference.serializedObject);
-            // 对于嵌入式图表，serializedObject可能是GameObject或其他对象
-            if (string.IsNullOrEmpty(assetPath))
+            var entryType = reference.machine == null ? EntrySource.GraphAsset : EntrySource.PrefabEmbedded;
+            if (reference.machine != null)
             {
+                entryType = reference.machine.nest.source == GraphSource.Embed ? EntrySource.PrefabEmbedded : EntrySource.GraphAsset;
+            }
+            if (PrefabStageUtility.GetCurrentPrefabStage() != null)
+            {
+                Debug.Log(reference.machine.nest.source);
+                if (string.IsNullOrEmpty(assetPath))
+                {
+                    var stage = PrefabStageUtility.GetCurrentPrefabStage();
+                    assetPath = stage.assetPath;
+                }
+            }
+            else if (string.IsNullOrEmpty(assetPath))
+            {
+                // 对于嵌入式图表，serializedObject可能是GameObject或其他对象
                 var obj = reference.gameObject;
                 // // 对于场景中的对象，使用场景路径
                 scenePath = obj.scene.path;
@@ -182,6 +223,7 @@ namespace Unity.VisualScripting.Community
                         Debug.LogWarning("Unsupported method in non serialized graph.");
                         return;
                     }
+                    entryType = reference.machine.nest.source == GraphSource.Embed ? EntrySource.SceneEmbedded : EntrySource.GraphAsset;
                 }
 
                 if (window.context.isPrefabInstance)
@@ -189,10 +231,6 @@ namespace Unity.VisualScripting.Community
                     Debug.LogWarning("Unsupported method in non serialized graph.");
                     return;
                 }
-            } else if (PrefabStageUtility.GetCurrentPrefabStage() != null)
-            {
-                var stage = PrefabStageUtility.GetCurrentPrefabStage();
-                assetPath = stage.assetPath;
             }
 
             // 只处理第一个节点，多选时只记录第一个
@@ -204,6 +242,7 @@ namespace Unity.VisualScripting.Community
                 {
                     scenePath = scenePath,
                     assetPath = assetPath,
+                    entrySource = entryType,
                     name = uName,
                 };
 
@@ -376,38 +415,38 @@ namespace Unity.VisualScripting.Community
                 switch (asset)
                 {
                     case ScriptGraphAsset scriptGraphAsset:
-                    {
-                        var baseRef = scriptGraphAsset.GetReference().AsReference();
-                        yield return baseRef;
-                    }
+                        {
+                            var baseRef = scriptGraphAsset.GetReference().AsReference();
+                            yield return baseRef;
+                        }
                         break;
                     case StateGraphAsset stateGraphAsset:
-                    {
-                        var baseRef = stateGraphAsset.GetReference().AsReference();
-                        yield return baseRef;
-                    }
+                        {
+                            var baseRef = stateGraphAsset.GetReference().AsReference();
+                            yield return baseRef;
+                        }
                         break;
                     case GameObject prefab:
-                    {
-                        // 处理预制体中的图表
-                        var scriptMachines = prefab.GetComponentsInChildren<ScriptMachine>(true);
-                        foreach (var machine in scriptMachines)
                         {
-                            if (machine.graph == null) continue;
-                            var reference = GraphReference.New(machine, false);
-                            yield return reference;
-                        }
+                            // 处理预制体中的图表
+                            var scriptMachines = prefab.GetComponentsInChildren<ScriptMachine>(true);
+                            foreach (var machine in scriptMachines)
+                            {
+                                if (machine.graph == null) continue;
+                                var reference = GraphReference.New(machine, false);
+                                yield return reference;
+                            }
 
-                        var stateMachines = prefab.GetComponentsInChildren<StateMachine>(true);
-                        foreach (var machine in stateMachines)
-                        {
-                            if (machine.graph == null) continue;
-                            var reference = GraphReference.New(machine, false);
-                            yield return reference;
-                        }
+                            var stateMachines = prefab.GetComponentsInChildren<StateMachine>(true);
+                            foreach (var machine in stateMachines)
+                            {
+                                if (machine.graph == null) continue;
+                                var reference = GraphReference.New(machine, false);
+                                yield return reference;
+                            }
 
-                        yield break;
-                    }
+                            yield break;
+                        }
                     default:
                         yield break;
                 }
