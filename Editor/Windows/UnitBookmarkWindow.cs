@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using Object = UnityEngine.Object;
 using System.IO;
+using UnityEditor.SceneManagement;
 using UnityEngine.Serialization;
 
 namespace Unity.VisualScripting.Community
@@ -14,17 +15,32 @@ namespace Unity.VisualScripting.Community
         [Serializable]
         class Bookmark
         {
-            public string assetPath;
+            public string AssetPath => context.assetPath;
             public string path;
             public string type;
             public string name;
             public string meta;
 
+            public UnitUtility.EntryContext context;
+
             public string DisplayLabel
             {
                 get
                 {
-                    var fName = Path.GetFileNameWithoutExtension(assetPath);
+                    var fName = "";
+                    switch (context.source)
+                    {
+                        case UnitUtility.EntrySource.GraphAsset:
+                            fName = $" {context.assetPath}";
+                            break;
+                        case UnitUtility.EntrySource.PrefabEmbedded:
+                            fName = $" {context.assetPath}";
+                            break;
+                        case UnitUtility.EntrySource.SceneEmbedded:
+                            fName = $" {context.scenePath}:{context.objectPath}";
+                            break;
+                    }
+
                     var label = $"{fName}=>{path}{name}";
                     if (!string.IsNullOrEmpty(meta))
                     {
@@ -102,9 +118,12 @@ namespace Unity.VisualScripting.Community
                 {
                     text = bookmark.DisplayLabel
                 };
+                UnitUtility.DrawContextButton(bookmark.context);
+                
                 if (GUILayout.Button(icon,
                         EditorStyles.linkLabel, GUILayout.MaxHeight(IconSize.Small + 4)))
                 {
+                    UnitUtility.RestoreContext(bookmark.context);
                     var unit = BuildUnitInfo(bookmark);
                     if (unit != null && unit.Unit != null)
                     {
@@ -114,13 +133,13 @@ namespace Unity.VisualScripting.Community
                     else
                     {
                         _activeBookmark = null;
-                        Debug.LogError($"Missing {bookmark.name}:{bookmark.assetPath}");
+                        Debug.LogError($"Missing {bookmark.name}:{bookmark.AssetPath}");
                     }
                 }
             }
             else
             {
-                GUILayout.Label($"Missing {bookmark.name}:{bookmark.assetPath}");
+                GUILayout.Label($"Missing {bookmark.name}:{bookmark.AssetPath}");
             }
 
             GUILayout.EndHorizontal();
@@ -142,7 +161,7 @@ namespace Unity.VisualScripting.Community
             };
             GUILayout.Label("Active Objects");
             GUILayout.Label(icon, GUILayout.MaxHeight(IconSize.Small + 4));
-            var asset = AssetDatabase.LoadAssetAtPath<Object>(_activeBookmark.assetPath);
+            var asset = AssetDatabase.LoadAssetAtPath<Object>(_activeBookmark.AssetPath);
             Dictionary<GameObject, (GraphReference, Unit)> linkedGameObjectMap = new();
             var flowMachines = FindObjectsOfType<ScriptMachine>(true);
             foreach (var machine in flowMachines)
@@ -195,33 +214,12 @@ namespace Unity.VisualScripting.Community
 
         bool IsBookmarkValid(Bookmark bookmark)
         {
-            var asset = AssetDatabase.LoadAssetAtPath<Object>(bookmark.assetPath);
-            return asset != null && bookmark.type != null;
+            return UnitUtility.IsContextValid(bookmark.context);
         }
 
         GraphReference LoadAssetReference(Bookmark bookmark)
         {
-            var asset = AssetDatabase.LoadAssetAtPath<Object>(bookmark.assetPath);
-            if (asset == null)
-            {
-                return null;
-            }
-
-            switch (asset)
-            {
-                case ScriptGraphAsset scriptGraphAsset:
-                {
-                    var baseRef = scriptGraphAsset.GetReference().AsReference();
-                    return baseRef;
-                }
-                case StateGraphAsset stateGraphAsset:
-                {
-                    var baseRef = stateGraphAsset.GetReference().AsReference();
-                    return baseRef;
-                }
-                default:
-                    return null;
-            }
+            return UnitUtility.GetGraphReference(bookmark.context);
         }
 
         UnitInfo BuildUnitInfo(Bookmark bookmark)
@@ -270,27 +268,24 @@ namespace Unity.VisualScripting.Community
             if (GraphWindow.active == null) return;
             var window = GraphWindow.active;
             if (window == null) return;
-            var assetPath = AssetDatabase.GetAssetPath(window.reference.serializedObject);
-            if (string.IsNullOrEmpty(assetPath))
-            {
-                Debug.LogWarning("Unsupported method in non serialized graph.");
-                return;
-            }
+            var reference = window.reference;
+
 
             foreach (var elem in window.context.selection)
             {
                 if (elem is IUnit unit)
                 {
                     var uName = unit.ToString();
-                    var existed = _bookmarkList.Any(x => x.assetPath == assetPath && x.name == uName);
+                    var existed = _bookmarkList.Any(x => x.name == uName);
                     if (!existed)
                     {
                         var bookmark = new Bookmark()
                         {
-                            assetPath = assetPath,
                             name = uName,
+                            context = UnitUtility.GetEntryContext(reference),
                         };
                         var info = BuildUnitInfo(bookmark);
+                        if (info == null) continue;
                         bookmark.meta = info.Meta;
                         bookmark.path = UnitUtility.GetGraphPath(info.Reference);
                         bookmark.type = info.Unit.GetType().AssemblyQualifiedName;

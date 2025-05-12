@@ -16,39 +16,21 @@ namespace Unity.VisualScripting.Community
     [InitializeOnLoad]
     public static class UnitHistoryManager
     {
-        public enum EntrySource
-        {
-            GraphAsset,
-            SceneEmbedded,
-            PrefabEmbedded
-        }
-
-        [Serializable]
-        public class EntryContext
-        {
-            public string scenePath;
-            public Object rootObject;
-            public string objectPath;
-            public string prefabStage;
-        }
-
         [Serializable]
         public class HistoryEntry
         {
-            public string scenePath;
-            public string assetPath;
             public string path;
             public string type;
             public string name;
             public string meta;
-            public EntryContext context;
-            public EntrySource entrySource;
-
+            public UnitUtility.EntryContext context;
+            public string AssetPath => context.assetPath;
+            public string ScenePath => context.scenePath;
             public string DisplayLabel
             {
                 get
                 {
-                    var fName = Path.GetFileNameWithoutExtension(assetPath);
+                    var fName = Path.GetFileNameWithoutExtension(context.assetPath);
                     var label = $"{fName}=>{path}{name}";
                     if (!string.IsNullOrEmpty(meta))
                     {
@@ -191,73 +173,6 @@ namespace Unity.VisualScripting.Community
             if (window == null) return;
             var reference = window.reference;
 
-            var scenePath = "";
-            var assetPath = AssetDatabase.GetAssetPath(reference.serializedObject);
-            var embeddedSource = EntrySource.GraphAsset;
-
-            var context = new EntryContext()
-            {
-                rootObject = reference.rootObject,
-                prefabStage = PrefabStageUtility.GetCurrentPrefabStage()?.assetPath
-            };
-
-            if (PrefabStageUtility.GetCurrentPrefabStage() != null)
-            {
-                if (string.IsNullOrEmpty(assetPath))
-                {
-                    var stage = PrefabStageUtility.GetCurrentPrefabStage();
-                    assetPath = stage.assetPath;
-                    if (reference.rootObject != null)
-                    {
-                        var obj = reference.rootObject as GameObject;
-                        if (obj != null)
-                        {
-                            context.objectPath = UnitUtility.GetTransformPath(obj.transform);
-                        }
-                    }
-                }
-
-                embeddedSource = EntrySource.PrefabEmbedded;
-            }
-            else if (string.IsNullOrEmpty(assetPath))
-            {
-                // 对于嵌入式图表，serializedObject可能是GameObject或其他对象
-                var obj = reference.gameObject;
-                // // 对于场景中的对象，使用场景路径
-                scenePath = obj.scene.path;
-                context.scenePath = scenePath;
-                if (!string.IsNullOrEmpty(scenePath))
-                {
-                    assetPath = UnitUtility.GetTransformPath(obj.transform);
-                    if (obj != null)
-                    {
-                        context.objectPath = assetPath;
-                    }
-
-                    if (string.IsNullOrEmpty(assetPath))
-                    {
-                        Debug.LogWarning("Unsupported method in non serialized graph.");
-                        return;
-                    }
-
-                    embeddedSource = EntrySource.SceneEmbedded;
-                }
-
-                if (window.context.isPrefabInstance)
-                {
-                    Debug.LogWarning("Unsupported method in non serialized graph.");
-                    return;
-                }
-            }
-
-            var entryType = EntrySource.GraphAsset;
-            if (reference.machine != null)
-            {
-                entryType = reference.machine.nest.source == GraphSource.Embed
-                    ? embeddedSource
-                    : EntrySource.GraphAsset;
-            }
-
             // 只处理第一个节点，多选时只记录第一个
             if (selectedUnits.Count > 0)
             {
@@ -265,10 +180,7 @@ namespace Unity.VisualScripting.Community
                 var uName = unit.ToString();
                 var entry = new HistoryEntry()
                 {
-                    scenePath = scenePath,
-                    assetPath = assetPath,
-                    entrySource = entryType,
-                    context = context,
+                    context = UnitUtility.GetEntryContext(reference),
                     name = uName,
                 };
 
@@ -281,7 +193,7 @@ namespace Unity.VisualScripting.Community
 
                     // 检查是否已存在相同的条目
                     var existingIndex = HistoryData.instance.historyEntries.FindIndex(x =>
-                        x.assetPath == entry.assetPath &&
+                        x.AssetPath == entry.AssetPath &&
                         x.name == entry.name);
 
                     if (existingIndex >= 0)
@@ -315,9 +227,9 @@ namespace Unity.VisualScripting.Community
 
         public static bool IsEntryValid(HistoryEntry entry)
         {
-            if (string.IsNullOrEmpty(entry.scenePath))
+            if (string.IsNullOrEmpty(entry.ScenePath))
             {
-                var asset = AssetDatabase.LoadAssetAtPath<Object>(entry.assetPath);
+                var asset = AssetDatabase.LoadAssetAtPath<Object>(entry.AssetPath);
                 return asset != null && entry.type != null;
             }
 
@@ -374,19 +286,19 @@ namespace Unity.VisualScripting.Community
 
         public static IEnumerable<GraphReference> LoadAssetReference(HistoryEntry entry)
         {
-            if (!string.IsNullOrEmpty(entry.scenePath))
+            if (!string.IsNullOrEmpty(entry.ScenePath))
             {
                 // 尝试加载场景
-                var sceneAsset = AssetDatabase.LoadAssetAtPath<UnityEditor.SceneAsset>(entry.scenePath);
+                var sceneAsset = AssetDatabase.LoadAssetAtPath<UnityEditor.SceneAsset>(entry.ScenePath);
                 if (sceneAsset == null) yield break;
                 // 如果是场景资产，需要确保场景已加载
-                var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(entry.scenePath);
+                var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(entry.ScenePath);
                 if (!scene.isLoaded) yield break;
                 var roots = scene.GetRootGameObjects();
                 List<GameObject> founds = new();
                 foreach (var root in roots)
                 {
-                    founds.AddRange(FindObjectsByPath(root, entry.assetPath));
+                    founds.AddRange(FindObjectsByPath(root, entry.AssetPath));
                 }
 
                 foreach (var go in founds)
@@ -412,9 +324,9 @@ namespace Unity.VisualScripting.Community
                 yield break;
             }
 
-            if (entry.assetPath.EndsWith(".prefab"))
+            if (entry.AssetPath.EndsWith(".prefab"))
             {
-                var prefab = AssetDatabase.LoadAssetAtPath<Object>(entry.assetPath) as GameObject;
+                var prefab = AssetDatabase.LoadAssetAtPath<Object>(entry.AssetPath) as GameObject;
                 if (prefab == null) yield break;
 
                 var scriptMachines = prefab.GetComponentsInChildren<ScriptMachine>(true);
@@ -437,7 +349,7 @@ namespace Unity.VisualScripting.Community
             }
             else
             {
-                var asset = AssetDatabase.LoadAssetAtPath<Object>(entry.assetPath);
+                var asset = AssetDatabase.LoadAssetAtPath<Object>(entry.AssetPath);
                 switch (asset)
                 {
                     case ScriptGraphAsset scriptGraphAsset:

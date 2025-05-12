@@ -1,15 +1,256 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
+using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Object = UnityEngine.Object;
 
 namespace Unity.VisualScripting.Community
 {
     public static class UnitUtility
     {
+        public enum EntrySource
+        {
+            GraphAsset,
+            SceneEmbedded,
+            PrefabEmbedded
+        }
+
+        [Serializable]
+        public class EntryContext
+        {
+            public string scenePath;
+            public string assetPath;
+            [NonSerialized] public Object RootObject;
+            public string objectPath;
+            public string prefabStage;
+            public EntrySource source;
+        }
+
+        public static EntryContext GetEntryContext(GraphReference assetEntry)
+        {
+            if (GraphWindow.active == null) return null;
+            var window = GraphWindow.active;
+            if (window == null) return null;
+            var reference = window.reference;
+
+            var scenePath = "";
+            var assetPath = AssetDatabase.GetAssetPath(reference.serializedObject);
+            var embeddedSource = EntrySource.GraphAsset;
+
+            var context = new EntryContext()
+            {
+                RootObject = reference.rootObject,
+                prefabStage = PrefabStageUtility.GetCurrentPrefabStage()?.assetPath
+            };
+
+            if (PrefabStageUtility.GetCurrentPrefabStage() != null)
+            {
+                if (string.IsNullOrEmpty(assetPath))
+                {
+                    var stage = PrefabStageUtility.GetCurrentPrefabStage();
+                    assetPath = stage.assetPath;
+                    if (reference.rootObject != null)
+                    {
+                        var obj = reference.rootObject as GameObject;
+                        if (obj != null)
+                        {
+                            context.objectPath = GetTransformPath(obj.transform);
+                        }
+                    }
+                }
+
+                embeddedSource = EntrySource.PrefabEmbedded;
+            }
+            else if (string.IsNullOrEmpty(assetPath))
+            {
+                // 对于嵌入式图表，serializedObject可能是GameObject或其他对象
+                var obj = reference.gameObject;
+                // // 对于场景中的对象，使用场景路径
+                scenePath = obj.scene.path;
+                context.scenePath = scenePath;
+                if (!string.IsNullOrEmpty(scenePath))
+                {
+                    var objPath = GetTransformPath(obj.transform);
+                    if (obj != null)
+                    {
+                        context.objectPath = objPath;
+                    }
+
+                    if (string.IsNullOrEmpty(objPath))
+                    {
+                        Debug.LogWarning("Unsupported method in non serialized graph.");
+                        return null;
+                    }
+
+                    embeddedSource = EntrySource.SceneEmbedded;
+                }
+
+                if (window.context.isPrefabInstance)
+                {
+                    Debug.LogWarning("Unsupported method in non serialized graph.");
+                    return null;
+                }
+            }
+
+            var entrySource = EntrySource.GraphAsset;
+            if (reference.machine != null)
+            {
+                entrySource = reference.machine.nest.source == GraphSource.Embed
+                    ? embeddedSource
+                    : EntrySource.GraphAsset;
+            }
+
+            context.scenePath = scenePath;
+            context.assetPath = assetPath;
+            context.source = entrySource;
+
+            return context;
+        }
+
+        public static void RestoreContext(EntryContext context)
+        {
+            if (context.source == EntrySource.GraphAsset)
+            {
+                if (context.RootObject != null && Selection.activeObject != context.RootObject)
+                {
+                    Selection.activeObject = context.RootObject;
+                }
+            }
+            else if (context.source == EntrySource.PrefabEmbedded)
+            {
+                var opening = PrefabStageUtility.GetCurrentPrefabStage()?.assetPath;
+                if (!string.IsNullOrEmpty(context.prefabStage))
+                {
+                    if (opening != context.prefabStage)
+                        PrefabStageUtility.OpenPrefab(context.prefabStage);
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(opening))
+                    {
+                        StageUtility.GoToMainStage();
+                    }
+                }
+
+                PrefabUtility.LoadPrefabContents(context.prefabStage);
+            }
+            else if (context.source == EntrySource.SceneEmbedded)
+            {
+                var scene = SceneManager.GetActiveScene();
+                if (scene.path != context.scenePath)
+                {
+                    EditorSceneManager.OpenScene(context.scenePath);
+                    var obj = UnitUtility.GetTransform(context.objectPath);
+                    if (obj != null)
+                    {
+                        Selection.activeGameObject = obj.gameObject;
+                    }
+                }
+            }
+        }
+
+        private static Color _graphColor = new Color(0.5f, 0.8f, 0.6f);
+        private static Color _prefabColor = new Color(0.2f, 0.7f, 0.9f);
+        private static Color _sceneColor = new Color(0.7f, 0.7f, 0.7f);
+
+        public static void DrawContextButton(EntryContext context)
+        {
+            switch (context.source)
+            {
+                case EntrySource.GraphAsset:
+                    GUI.color = _graphColor;
+                    if (GUILayout.Button("G", GUILayout.ExpandWidth(false)))
+                    {
+                        var asset = AssetDatabase.LoadAssetAtPath<Object>(context.assetPath);
+                        if (asset != null)
+                        {
+                            EditorGUIUtility.PingObject(asset);
+                        }
+                    }
+
+                    GUI.color = Color.white;
+                    break;
+                case EntrySource.PrefabEmbedded:
+                    GUI.color = _prefabColor;
+                    if (GUILayout.Button("P", GUILayout.ExpandWidth(false)))
+                    {
+                        var asset = AssetDatabase.LoadAssetAtPath<GameObject>(context.assetPath);
+                        if (asset != null)
+                        {
+                            EditorGUIUtility.PingObject(asset);
+                        }
+                    }
+
+                    GUI.color = Color.white;
+                    break;
+                case EntrySource.SceneEmbedded:
+                    GUI.color = _sceneColor;
+                    if (GUILayout.Button("S", GUILayout.ExpandWidth(false)))
+                    {
+                        var asset = AssetDatabase.LoadAssetAtPath<Object>(context.scenePath);
+                        if (asset != null)
+                        {
+                            EditorGUIUtility.PingObject(asset);
+                        }
+                    }
+
+                    GUI.color = Color.white;
+                    break;
+            }
+        }
+
+        public static bool IsContextValid(EntryContext context)
+        {
+            switch (context.source)
+            {
+                case EntrySource.GraphAsset:
+                    return !string.IsNullOrEmpty(context.assetPath);
+                case EntrySource.PrefabEmbedded:
+                    return !string.IsNullOrEmpty(context.prefabStage);
+                case EntrySource.SceneEmbedded:
+                    return !string.IsNullOrEmpty(context.scenePath);
+                default:
+                    return false;
+            }
+        }
+
+        public static GraphReference GetGraphReference(EntryContext context)
+        {
+            switch (context.source)
+            {
+                case EntrySource.GraphAsset:
+                {
+                    var asset = AssetDatabase.LoadAssetAtPath<Object>(context.assetPath);
+                    switch (asset)
+                    {
+                        case ScriptGraphAsset scriptGraphAsset:
+                        {
+                            var baseRef = scriptGraphAsset.GetReference().AsReference();
+                            return baseRef;
+                        }
+                        case StateGraphAsset stateGraphAsset:
+                        {
+                            var baseRef = stateGraphAsset.GetReference().AsReference();
+                            return baseRef;
+                        }
+                        default:
+                            return null;
+                    }
+                }
+                case EntrySource.PrefabEmbedded:
+                    // TODO
+                    return null;
+                case EntrySource.SceneEmbedded:
+                    // TODO
+                    return null;
+                default:
+                    return null;
+            }
+        }
+
         public static GraphReference GetUnitGraphReference(GraphReference assetEntry, string unitName)
         {
             if (assetEntry == null) return null;
@@ -181,6 +422,7 @@ namespace Unity.VisualScripting.Community
 
             return path;
         }
+
         // Get a transform from a path in the scene hierarchy
         // path format: "Root/Child/GrandChild"
         public static Transform GetTransform(string transformPath)
@@ -194,8 +436,10 @@ namespace Unity.VisualScripting.Community
                 transform = transform.Find(path[i]);
                 if (transform == null) return null;
             }
+
             return transform;
         }
+
         // for graph node only
         public static IEnumerable<(GraphReference, Graph)> TraverseStateGraph(GraphReference graphReference)
         {

@@ -143,49 +143,7 @@ namespace Unity.VisualScripting.Community
             {
                 _removedIndex = index;
             }
-
-            switch (entry.entrySource)
-            {
-                case UnitHistoryManager.EntrySource.GraphAsset:
-                    GUI.color = _graphColor;
-                    if (GUILayout.Button("G", GUILayout.ExpandWidth(false)))
-                    {
-                        var asset = AssetDatabase.LoadAssetAtPath<Object>(entry.assetPath);
-                        if (asset != null)
-                        {
-                            EditorGUIUtility.PingObject(asset);
-                        }
-                    }
-
-                    GUI.color = Color.white;
-                    break;
-                case UnitHistoryManager.EntrySource.PrefabEmbedded:
-                    GUI.color = _prefabColor;
-                    if (GUILayout.Button("P", GUILayout.ExpandWidth(false)))
-                    {
-                        var asset = AssetDatabase.LoadAssetAtPath<GameObject>(entry.assetPath);
-                        if (asset != null)
-                        {
-                            EditorGUIUtility.PingObject(asset);
-                        }
-                    }
-
-                    GUI.color = Color.white;
-                    break;
-                case UnitHistoryManager.EntrySource.SceneEmbedded:
-                    GUI.color = _sceneColor;
-                    if (GUILayout.Button("S", GUILayout.ExpandWidth(false)))
-                    {
-                        var asset = AssetDatabase.LoadAssetAtPath<Object>(entry.scenePath);
-                        if (asset != null)
-                        {
-                            EditorGUIUtility.PingObject(asset);
-                        }
-                    }
-
-                    GUI.color = Color.white;
-                    break;
-            }
+            UnitUtility.DrawContextButton(entry.context);
 
             // 显示条目
             if (UnitHistoryManager.IsEntryValid(entry))
@@ -199,7 +157,7 @@ namespace Unity.VisualScripting.Community
 
                 if (GUILayout.Button(icon, EditorStyles.linkLabel, GUILayout.MaxHeight(IconSize.Small + 4)))
                 {
-                    OpenContext(entry);
+                    UnitUtility.RestoreContext(entry.context);
 
                     var unit = UnitHistoryManager.BuildUnitInfo(entry);
                     if (unit != null && unit.Unit != null)
@@ -210,7 +168,7 @@ namespace Unity.VisualScripting.Community
                     }
                     else
                     {
-                        Debug.LogError($"Missing {entry.name}:{entry.assetPath}");
+                        Debug.LogError($"Missing {entry.name}:{entry.AssetPath}");
                         if (autoCleanInvalidEntries)
                         {
                             UnitHistoryManager.RemoveHistoryEntry(index);
@@ -221,7 +179,7 @@ namespace Unity.VisualScripting.Community
             }
             else
             {
-                GUILayout.Label($"Missing {entry.name}:{entry.assetPath}");
+                GUILayout.Label($"Missing {entry.name}:{entry.AssetPath}");
                 if (autoCleanInvalidEntries)
                 {
                     UnitHistoryManager.RemoveHistoryEntry(index);
@@ -238,46 +196,5 @@ namespace Unity.VisualScripting.Community
             _removedIndex = -1;
         }
 
-        void OpenContext(UnitHistoryManager.HistoryEntry entry)
-        {
-            var context = entry.context;
-            if (entry.entrySource == UnitHistoryManager.EntrySource.GraphAsset)
-            {
-                if (context.rootObject != null && Selection.activeObject != context.rootObject)
-                {
-                    Selection.activeObject = context.rootObject;
-                }
-            }
-            else if (entry.entrySource == UnitHistoryManager.EntrySource.PrefabEmbedded)
-            {
-                var opening = PrefabStageUtility.GetCurrentPrefabStage()?.assetPath;
-                if (!string.IsNullOrEmpty(context.prefabStage))
-                {
-                    if (opening != context.prefabStage)
-                        PrefabStageUtility.OpenPrefab(context.prefabStage);
-                }
-                else
-                {
-                    if (string.IsNullOrEmpty(opening))
-                    {
-                        StageUtility.GoToMainStage();
-                    }
-                }
-                PrefabUtility.LoadPrefabContents(context.prefabStage);
-            }
-            else if (entry.entrySource == UnitHistoryManager.EntrySource.SceneEmbedded)
-            {
-                var scene = SceneManager.GetActiveScene();
-                if (scene.path != context.scenePath)
-                {
-                    EditorSceneManager.OpenScene(context.scenePath);
-                    var obj = UnitUtility.GetTransform(context.objectPath);
-                    if (obj != null)
-                    {
-                        Selection.activeGameObject = obj.gameObject;
-                    }
-                }
-            }
-        }
     }
 }
