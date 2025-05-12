@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Unity.VisualScripting.Community
 {
@@ -179,6 +180,21 @@ namespace Unity.VisualScripting.Community
             }
 
             return path;
+        }
+        // Get a transform from a path in the scene hierarchy
+        // path format: "Root/Child/GrandChild"
+        public static Transform GetTransform(string transformPath)
+        {
+            var path = transformPath.Split("/");
+            var root = GameObject.Find(path[0]);
+            if (root == null) return null;
+            var transform = root.transform;
+            for (var i = 1; i < path.Length; i++)
+            {
+                transform = transform.Find(path[i]);
+                if (transform == null) return null;
+            }
+            return transform;
         }
         // for graph node only
         public static IEnumerable<(GraphReference, Graph)> TraverseStateGraph(GraphReference graphReference)

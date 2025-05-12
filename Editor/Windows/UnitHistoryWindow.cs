@@ -13,7 +13,7 @@ namespace Unity.VisualScripting.Community
     public class UnitHistoryWindow : EditorWindow
     {
         // 使用UnitHistoryManager中的UnitHistoryEntry类型
-        private List<UnitHistoryManager.UnitHistoryEntry> _historyEntries = new();
+        private List<UnitHistoryManager.HistoryEntry> _historyEntries = new();
         private int maxHistoryCount = 50;
         private bool autoCleanInvalidEntries = true;
         private string _filterString = "";
@@ -34,7 +34,6 @@ namespace Unity.VisualScripting.Community
             _historyEntries = UnitHistoryManager.GetHistoryEntries();
             maxHistoryCount = UnitHistoryManager.GetMaxHistoryCount();
             autoCleanInvalidEntries = UnitHistoryManager.GetAutoCleanInvalidEntries();
-
         }
 
         private void OnDisable()
@@ -157,6 +156,7 @@ namespace Unity.VisualScripting.Community
                             EditorGUIUtility.PingObject(asset);
                         }
                     }
+
                     GUI.color = Color.white;
                     break;
                 case UnitHistoryManager.EntrySource.PrefabEmbedded:
@@ -182,6 +182,7 @@ namespace Unity.VisualScripting.Community
                             EditorGUIUtility.PingObject(asset);
                         }
                     }
+
                     GUI.color = Color.white;
                     break;
             }
@@ -198,25 +199,7 @@ namespace Unity.VisualScripting.Community
 
                 if (GUILayout.Button(icon, EditorStyles.linkLabel, GUILayout.MaxHeight(IconSize.Small + 4)))
                 {
-                    // 类型按钮
-                    switch (entry.entrySource)
-                    {
-                        case UnitHistoryManager.EntrySource.GraphAsset:
-                            break;
-                        case UnitHistoryManager.EntrySource.PrefabEmbedded:
-                            PrefabUtility.LoadPrefabContents(entry.assetPath);
-                            break;
-                        case UnitHistoryManager.EntrySource.SceneEmbedded:
-                            var scene = SceneManager.GetActiveScene();
-                            if (scene.path != entry.scenePath)
-                            {
-                                Debug.Log($"Open Scene:{entry.scenePath}->{entry.assetPath}");
-                                EditorSceneManager.OpenScene(entry.scenePath);
-                            }
-
-                            break;
-                    }
-
+                    OpenContext(entry);
 
                     var unit = UnitHistoryManager.BuildUnitInfo(entry);
                     if (unit != null && unit.Unit != null)
@@ -255,62 +238,46 @@ namespace Unity.VisualScripting.Community
             _removedIndex = -1;
         }
 
-        private class UnitInfo
+        void OpenContext(UnitHistoryManager.HistoryEntry entry)
         {
-            public GraphReference AssetReference;
-            public GraphReference Reference;
-            public IUnit Unit;
-            public string Name;
-            public string Meta;
-        }
-
-
-        private IUnit FindNode(GraphReference reference, string nodeName)
-        {
-            if (reference == null) return null;
-
-            // 处理Flow图表中的节点
-            foreach (var enumerator in UnitUtility.TraverseFlowGraphUnit(reference))
+            var context = entry.context;
+            if (entry.entrySource == UnitHistoryManager.EntrySource.GraphAsset)
             {
-                if (enumerator.Item2.ToString() == nodeName)
+                if (context.rootObject != null && Selection.activeObject != context.rootObject)
                 {
-                    return enumerator.Item2;
+                    Selection.activeObject = context.rootObject;
                 }
             }
-
-            // 处理State图表中的节点
-            foreach (var enumerator in UnitUtility.TraverseStateGraphUnit(reference))
+            else if (entry.entrySource == UnitHistoryManager.EntrySource.PrefabEmbedded)
             {
-                if (enumerator.Item2.ToString() == nodeName)
+                var opening = PrefabStageUtility.GetCurrentPrefabStage()?.assetPath;
+                if (!string.IsNullOrEmpty(context.prefabStage))
                 {
-                    return enumerator.Item2;
+                    if (opening != context.prefabStage)
+                        PrefabStageUtility.OpenPrefab(context.prefabStage);
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(opening))
+                    {
+                        StageUtility.GoToMainStage();
+                    }
+                }
+                PrefabUtility.LoadPrefabContents(context.prefabStage);
+            }
+            else if (entry.entrySource == UnitHistoryManager.EntrySource.SceneEmbedded)
+            {
+                var scene = SceneManager.GetActiveScene();
+                if (scene.path != context.scenePath)
+                {
+                    EditorSceneManager.OpenScene(context.scenePath);
+                    var obj = UnitUtility.GetTransform(context.objectPath);
+                    if (obj != null)
+                    {
+                        Selection.activeGameObject = obj.gameObject;
+                    }
                 }
             }
-
-            // 如果在当前图表中没有找到，尝试在场景中查找
-            if (reference.serializedObject is GameObject gameObject)
-            {
-                // 查找所有ScriptMachine和StateMachine组件
-                var scriptMachines = gameObject.GetComponentsInChildren<ScriptMachine>(true);
-                foreach (var machine in scriptMachines)
-                {
-                    if (machine.graph == null) continue;
-                    var machineRef = GraphReference.New(machine, false);
-                    var result = FindNode(machineRef, nodeName);
-                    if (result != null) return result;
-                }
-
-                var stateMachines = gameObject.GetComponentsInChildren<StateMachine>(true);
-                foreach (var machine in stateMachines)
-                {
-                    if (machine.graph == null) continue;
-                    var machineRef = GraphReference.New(machine, false);
-                    var result = FindNode(machineRef, nodeName);
-                    if (result != null) return result;
-                }
-            }
-
-            return null;
         }
     }
 }

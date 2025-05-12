@@ -121,8 +121,6 @@ namespace Unity.VisualScripting.Community
             _pattern = GUILayout.TextField(_pattern);
             GUILayout.Label("In", GUILayout.ExpandWidth(false));
             _filterContainer = GUILayout.TextField(_filterContainer);
-            _caseSensitive = GUILayout.Toggle(_caseSensitive, "Case", GUILayout.ExpandWidth(false));
-            _wordMatch = GUILayout.Toggle(_wordMatch, "Word", GUILayout.ExpandWidth(false));
             if (GUILayout.Button("Search", GUILayout.ExpandWidth(false)))
             {
                 // GraphSearch();
@@ -133,14 +131,17 @@ namespace Unity.VisualScripting.Community
 
             // 添加搜索选项
             GUILayout.BeginHorizontal();
-            GUILayout.Label("搜索范围:", GUILayout.ExpandWidth(false));
+            _caseSensitive = GUILayout.Toggle(_caseSensitive, "Case", GUILayout.ExpandWidth(false));
+            _wordMatch = GUILayout.Toggle(_wordMatch, "Word", GUILayout.ExpandWidth(false));
+            GUILayout.Label("|", GUILayout.ExpandWidth(false));
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("|", GUILayout.ExpandWidth(false));
             _searchInGraphAssets = GUILayout.Toggle(_searchInGraphAssets, "Graph Assets", GUILayout.ExpandWidth(false));
             _searchInPrefabs = GUILayout.Toggle(_searchInPrefabs, "Prefabs", GUILayout.ExpandWidth(false));
             _searchInScenes = GUILayout.Toggle(_searchInScenes, "Scenes", GUILayout.ExpandWidth(false));
-            GUILayout.EndHorizontal();
-
-            // find arguments.
-            GUILayout.BeginHorizontal();
+            GUILayout.Label("|", GUILayout.ExpandWidth(false));
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("|", GUILayout.ExpandWidth(false));
             _matchType = GUILayout.Toggle(_matchType, "Type", GUILayout.ExpandWidth(false));
             _matchMethod = GUILayout.Toggle(_matchMethod, "Method", GUILayout.ExpandWidth(false));
             _matchField = GUILayout.Toggle(_matchField, "Field", GUILayout.ExpandWidth(false));
