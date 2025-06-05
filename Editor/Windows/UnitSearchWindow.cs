@@ -88,7 +88,6 @@ namespace Unity.VisualScripting.Community
         {
             var window = GetWindow<UnitSearchWindow>();
             window.titleContent = new GUIContent("Search Unit");
-            ClearResult();
         }
 
 
