@@ -157,7 +157,7 @@ namespace Unity.VisualScripting.Community
 
         public static void Trigger(GameObject target, object eventData)
         {
-            if (eventData is IDefinedEvent { TriggerOnGameObject: true } definedEvent)
+            if (eventData is IDefinedEvent { TriggerOnGameObject: true } definedEvent && target != null)
             {
                 target.SendMessage("OnDefinedEvent", definedEvent, SendMessageOptions.DontRequireReceiver);
             }
