@@ -157,6 +157,10 @@ namespace Unity.VisualScripting.Community
 
         public static void Trigger(GameObject target, object eventData)
         {
+            if (eventData is IDefinedEvent { TriggerOnGameObject: true } definedEvent)
+            {
+                target.SendMessage("OnDefinedEvent", definedEvent, SendMessageOptions.DontRequireReceiver);
+            }
             var eventHook = ConstructHook(target, eventData.GetType());
             EventBus.Trigger(eventHook, new DefinedEventArgs(eventData));
         }
