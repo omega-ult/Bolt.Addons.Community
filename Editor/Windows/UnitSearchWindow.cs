@@ -73,7 +73,7 @@ namespace Unity.VisualScripting.Community
         private float _searchProgress = 0f;
         private string _searchStatus = "";
 
-        private Dictionary<string, List<UnitContainer>> _unitContainerMap = new();
+        private static Dictionary<string, List<UnitContainer>> _unitContainerMap = new();
 
 
         // scroll view position
@@ -105,10 +105,6 @@ namespace Unity.VisualScripting.Community
                 if (_pattern.Length > 1 && _pattern.Trim().Length > 1)
                 {
                     Search();
-                }
-                else
-                {
-                    ClearResult();
                 }
             }
 
