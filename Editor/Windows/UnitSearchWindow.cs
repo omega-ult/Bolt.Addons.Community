@@ -296,6 +296,28 @@ namespace Unity.VisualScripting.Community
                     Repaint();
                 }
             };
+            // remove duplication
+            foreach (var key in _unitContainerMap.Keys)
+            {
+                var unitList = _unitContainerMap[key];
+                // unitList = unitList.
+                if (unitList is not { Count: > 0 }) continue;
+                var seen = new HashSet<string>();
+                foreach (var container in unitList.Where(container => container.Units != null))
+                {
+                    container.Units = container.Units
+                        .GroupBy(u => u.Unit?.ToString())
+                        .Select(g => g.First())
+                        .Where(u =>
+                        {
+                            var keyStr = u.Unit?.ToString();
+                            if (keyStr == null) return false;
+                            return seen.Add(keyStr);
+                        })
+                        .ToList();
+                }
+
+            }
         }
 
         private void SearchInGraphAssets(Regex matchWord)
