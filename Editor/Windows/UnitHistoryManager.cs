@@ -70,6 +70,8 @@ namespace Unity.VisualScripting.Community
         // 标记是否是从历史窗口触发的跳转，防止从历史窗口点击时产生新的历史记录
         private static bool _isJumpingFromHistory = false;
 
+        public static int historyCursor = 0;
+
         // 静态构造函数，在编辑器加载时自动执行
         static UnitHistoryManager()
         {
@@ -218,6 +220,7 @@ namespace Unity.VisualScripting.Community
             {
                 CleanInvalidEntries();
             }
+            ResetHistoryCursor();
         }
 
         public static void CleanInvalidEntries()
@@ -458,6 +461,11 @@ namespace Unity.VisualScripting.Community
             }
 
             return null;
+        }
+
+        public static void ResetHistoryCursor()
+        {
+            historyCursor = 0;
         }
     }
 }

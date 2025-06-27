@@ -27,6 +27,37 @@ namespace Unity.VisualScripting.Community
             window.titleContent = new GUIContent("Unit History");
         }
 
+        [MenuItem("Window/UVS Community/History/Previous %LEFT")]
+        public static void PreviousHistory()
+        {
+            var entries = UnitHistoryManager.GetHistoryEntries();
+            if (entries.Count == 0) return;
+            UnitHistoryManager.historyCursor = Mathf.Max(0, UnitHistoryManager.historyCursor + 1);
+            JumpToHistory(UnitHistoryManager.historyCursor);
+        }
+
+        [MenuItem("Window/UVS Community/History/Next %RIGHT")]
+        public static void NextHistory()
+        {
+            var entries = UnitHistoryManager.GetHistoryEntries();
+            if (entries.Count == 0) return;
+            UnitHistoryManager.historyCursor = Mathf.Min(entries.Count - 1, UnitHistoryManager.historyCursor - 1);
+            JumpToHistory(UnitHistoryManager.historyCursor);
+        }
+
+        private static void JumpToHistory(int index)
+        {
+            var entries = UnitHistoryManager.GetHistoryEntries();
+            if (index < 0 || index >= entries.Count) return;
+            var entry = entries[index];
+            // 复用已有的跳转逻辑
+            var unit = UnitHistoryManager.BuildUnitInfo(entry);
+            if (unit != null && unit.Unit != null)
+            {
+                UnitHistoryManager.SetJumpingFromHistory(true);
+                UnitUtility.FocusUnit(unit.Reference, unit.Unit);
+            }
+        }
 
         private void OnEnable()
         {
@@ -154,8 +185,11 @@ namespace Unity.VisualScripting.Community
                 {
                     text = entry.DisplayLabel
                 };
-
-                if (GUILayout.Button(icon, EditorStyles.linkLabel, GUILayout.MaxHeight(IconSize.Small + 4)))
+                if (index == UnitHistoryManager.historyCursor)
+                {
+                    GUILayout.Label(icon, GUILayout.MaxHeight(IconSize.Small + 4));
+                }
+                else if (GUILayout.Button(icon, EditorStyles.linkLabel, GUILayout.MaxHeight(IconSize.Small + 4)))
                 {
                     UnitUtility.RestoreContext(entry.context);
 
