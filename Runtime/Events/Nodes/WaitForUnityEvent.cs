@@ -8,14 +8,12 @@ namespace Unity.VisualScripting.Community
     /// <summary>
     /// Delays flow by waiting until a condition becomes true.
     /// </summary>
-    [UnitShortTitle("Wait Unity Event")]
+    [UnitShortTitle("Wait For Event")]
     [UnitTitle("Wait For Unity Event")]
     [UnitCategory("Wait")]
     [TypeIcon(typeof(WaitUnit))]
     public class WaitForUnityEvent : WaitUnit
     {
-        [DoNotSerialize] // No need to serialize ports.
-        ControlInput Reset;
         /// <summary>
         /// The condition to await.
         /// </summary>
@@ -32,13 +30,6 @@ namespace Unity.VisualScripting.Community
         protected override void Definition()
         {
             base.Definition();
-
-            Reset = ControlInput(nameof(Reset), (flow) =>
-            {
-                eventTriggered = false;
-                return null;
-            });
-            
             Event = ValueInput<UnityEvent>(nameof(Event));
             Requirement(Event, enter);
         }
@@ -46,12 +37,13 @@ namespace Unity.VisualScripting.Community
         protected override IEnumerator Await(Flow flow)
         {
             var e = flow.GetValue<UnityEvent>(Event);
+            eventTriggered = false;
             e.AddListener(OnUnityEvent);
             
             yield return new WaitUntil(() => eventTriggered);
             
-            eventTriggered = false;
             e.RemoveListener(OnUnityEvent);
+            eventTriggered = false;
             yield return exit;
         }
     }
