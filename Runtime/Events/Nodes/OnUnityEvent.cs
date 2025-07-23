@@ -19,6 +19,21 @@ namespace Unity.VisualScripting.Community {
     [UnitCategory("Events")]
     public class OnUnityEvent : EventUnit<EventData> {
         protected override bool register => false;
+        
+        [SerializeAs(nameof(ManualControl))] private bool _manualControl;
+
+        [DoNotSerialize]
+        [Inspectable, UnitHeaderInspectable("Manual")]
+        public bool ManualControl
+        {
+            get => _manualControl;
+            set => _manualControl = value;
+        }
+        
+        [DoNotSerialize]
+        private ControlInput Start;
+        [DoNotSerialize]
+        private ControlInput Stop;
 
         [DoNotSerialize]
         public ValueInput UnityEvent;
@@ -29,7 +44,22 @@ namespace Unity.VisualScripting.Community {
             return new OnUnityEventData();
         }
 
-        protected override void Definition() {
+        protected override void Definition()
+        {
+            if (ManualControl)
+            {
+                Start = ControlInput(nameof(Start), (flow) =>
+                {
+                    Bind(flow.stack);
+                    return null;
+                });
+                Stop = ControlInput(nameof(Stop), (flow) =>
+                {
+                    StopListening(flow.stack);
+                    return null;
+                });
+            }
+            
             base.Definition();
 
             UnityEvent = ValueInput<UnityEventBase>("event");
@@ -48,7 +78,17 @@ namespace Unity.VisualScripting.Community {
             if (data.EventListener != null || !UnityEvent.hasValidConnection) return;
 
             UpdatePorts();
+            if (!ManualControl)
+            {
+                Bind(stack);
+            }
+        }
 
+        void Bind(GraphStack stack)
+        {
+            var data = GetData(stack);
+            if (data.EventListener != null || !UnityEvent.hasValidConnection) return;
+            
             var stackRef = stack.ToReference();
             var eventBase = Flow.FetchValue<UnityEventBase>(UnityEvent, stackRef);
             var method = Type.GetMethod(nameof(UnityEngine.Events.UnityEvent.AddListener));
@@ -61,15 +101,13 @@ namespace Unity.VisualScripting.Community {
 
         public override void StopListening(GraphStack stack) {
             var data = GetData(stack);
-
-            if (data.EventListener == null) return;
-            
+            if (data.EventListener == null)return;
             var stackRef = stack.ToReference();
             var eventBase = Flow.FetchValue<UnityEventBase>(UnityEvent, stackRef);
             var method = Type.GetMethod(nameof(UnityEngine.Events.UnityEvent.RemoveListener));
             method?.Invoke(eventBase, new[] { data.EventListener });
-
             data.EventListener = null;
+            
         }
         
         public void UpdatePorts() {
