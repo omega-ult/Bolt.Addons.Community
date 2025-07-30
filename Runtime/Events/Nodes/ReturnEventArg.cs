@@ -11,6 +11,7 @@ namespace Unity.VisualScripting.Community
     public struct ReturnEventArg
     {
         public readonly TriggerReturnEvent trigger;
+        public readonly int ticket;
         public readonly UnityEngine.GameObject target;
         public readonly bool global;
         public readonly object[] arguments;
@@ -18,9 +19,11 @@ namespace Unity.VisualScripting.Community
         public readonly Action<object> callback;
         public readonly bool isCallback;
 
-        public ReturnEventArg(TriggerReturnEvent trigger, UnityEngine.GameObject target, string name, bool global, object[] arguments = null)
+        public ReturnEventArg(TriggerReturnEvent trigger, int eventTicket, UnityEngine.GameObject target, string name, bool global,
+            object[] arguments = null)
         {
             this.trigger = trigger;
+            this.ticket = eventTicket;
             callback = null;
             isCallback = false;
             this.target = target;
@@ -29,20 +32,21 @@ namespace Unity.VisualScripting.Community
             this.name = name;
         }
 
-        public ReturnEventArg(Action<object> callback, UnityEngine.GameObject target, string name, bool global, object[] arguments = null)
-        {
-            this.trigger = null;
-            this.callback = callback;
-            isCallback = true;
-            this.target = target;
-            this.global = global;
-            this.arguments = arguments;
-            this.name = name;
-        }
+        // public ReturnEventArg(Action<object> callback, UnityEngine.GameObject target, string name, bool global, object[] arguments = null)
+        // {
+        //     this.trigger = null;
+        //     this.callback = callback;
+        //     isCallback = true;
+        //     this.target = target;
+        //     this.global = global;
+        //     this.arguments = arguments;
+        //     this.name = name;
+        // }
 
         public ReturnEventArg(ReturnEventData data)
         {
             trigger = data.args.trigger;
+            ticket = data.args.ticket;
             callback = data.args.callback;
             isCallback = data.args.isCallback;
             target = data.args.target;

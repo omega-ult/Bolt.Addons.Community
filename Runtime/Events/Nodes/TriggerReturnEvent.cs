@@ -159,10 +159,21 @@ namespace Unity.VisualScripting.Community
         public ControlOutput Enter(Flow flow)
         {
             List<object> argumentList = new List<object>();
-            var eventData = new ReturnEventData(new ReturnEventArg(this, global ? (GameObject)null : flow.GetValue<GameObject>(target), flow.GetValue<string>(name), global, argumentList.ToArray()));
+            var ticket = flow.stack.gameObject.GetInstanceID();
+            var eventData = new ReturnEventData(new ReturnEventArg(this, 
+                ticket,
+                global ? (GameObject)null : flow.GetValue<GameObject>(target),
+                flow.GetValue<string>(name),
+                global,
+                argumentList.ToArray()));
             argumentList.Add(eventData);
             argumentList.AddRange(arguments.Select(new System.Func<ValueInput, object>(flow.GetConvertedValue)));
-            ReturnEvent.Trigger(this, global ? (GameObject)null : flow.GetValue<GameObject>(target), flow.GetValue<string>(name), global, argumentList.ToArray());
+            ReturnEvent.Trigger(this,
+                global ? (GameObject)null : flow.GetValue<GameObject>(target),
+                ticket,
+                flow.GetValue<string>(name),
+                global,
+                argumentList.ToArray());
           
             return exit;
         }
@@ -190,7 +201,8 @@ namespace Unity.VisualScripting.Community
         protected override bool ShouldTrigger(Flow flow, ReturnEventArg args)
         {
             if (args.trigger == this && global && args.name == flow.GetValue<string>(name)) return true;
-            if (args.trigger == this && !global && args.target == flow.GetValue<GameObject>(target)) return true;
+            var ticket = flow.stack.gameObject.GetInstanceID(); 
+            if (ticket == args.ticket && args.trigger == this && !global && args.target == flow.GetValue<GameObject>(target)) return true;
             return false;
         }
     }

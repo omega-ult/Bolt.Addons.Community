@@ -156,19 +156,21 @@ namespace Unity.VisualScripting.Community
         /// </summary>
         /// <param name="trigger">The trigger unit we will return to when it hits a return unit.</param>
         /// <param name="target">The gameobject target of the event</param>
+        /// <param name="ticket">Unique ticket</param> 
         /// <param name="name">The name of the event.</param>
         /// <param name="global">Is the event global to all Return Events? Will ignore the target GameObject. Target can be null in this case.</param>
         /// <param name="args">The arguments to send through.</param>
-        public static void Trigger(TriggerReturnEvent trigger, GameObject target, string name, bool global = false,
+        public static void Trigger(TriggerReturnEvent trigger, GameObject target, int ticket, string name,
+            bool global = false,
             params object[] args)
         {
-            EventBus.Trigger<ReturnEventArg>("Return", new ReturnEventArg(trigger, target, name, global, args));
+            EventBus.Trigger<ReturnEventArg>("Return", new ReturnEventArg(trigger, ticket, target, name, global, args));
         }
 
-        public static void Trigger(GameObject target, string name, Action<object> callback = null, bool global = false,
-            params object[] args)
-        {
-            EventBus.Trigger<ReturnEventArg>("Return", new ReturnEventArg(callback, target, name, global, args));
-        }
+        // public static void Trigger(GameObject target, string name, Action<object> callback = null, bool global = false,
+        //     params object[] args)
+        // {
+        //     EventBus.Trigger<ReturnEventArg>("Return", new ReturnEventArg(callback, target, name, global, args));
+        // }
     }
 }
