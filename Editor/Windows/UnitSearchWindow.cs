@@ -113,10 +113,21 @@ namespace Unity.VisualScripting.Community
             _pattern = GUILayout.TextField(_pattern);
             GUILayout.Label("In", GUILayout.ExpandWidth(false));
             _filterContainer = GUILayout.TextField(_filterContainer);
-            if (GUILayout.Button("Search", GUILayout.ExpandWidth(false)))
+
+            if (_pattern.Length > 1 && _pattern.Trim().Length > 1)
             {
-                // GraphSearch();
-                Search();
+                if (GUILayout.Button("Search", GUILayout.ExpandWidth(false)))
+                {
+                    // GraphSearch();
+                    Search();
+                }
+            }
+            else
+            {
+                if (GUILayout.Button("Clean", GUILayout.ExpandWidth(false)))
+                {
+                    ClearResult();
+                }
             }
 
             GUILayout.EndHorizontal();
@@ -145,7 +156,7 @@ namespace Unity.VisualScripting.Community
             if (_isSearching)
             {
                 EditorGUI.ProgressBar(EditorGUILayout.GetControlRect(false, 20), _searchProgress, _searchStatus);
-            } 
+            }
 
             GUILayout.BeginVertical("box");
             _scrollViewRoot = GUILayout.BeginScrollView(_scrollViewRoot);
@@ -202,6 +213,7 @@ namespace Unity.VisualScripting.Community
                             EditorGUIUtility.PingObject(asset);
                         }
                     }
+
                     GUI.color = Color.white;
                     break;
                 case EntrySource.PrefabEmbedded:
@@ -233,11 +245,13 @@ namespace Unity.VisualScripting.Community
                             EditorGUIUtility.PingObject(asset);
                         }
                     }
+
                     GUI.color = Color.white;
                     break;
             }
+
             GUILayout.EndHorizontal();
-            
+
             GUILayout.BeginVertical();
             foreach (var unit in container.Units)
             {
@@ -247,6 +261,7 @@ namespace Unity.VisualScripting.Community
                     UnitUtility.FocusUnit(unit.Reference, unit.Unit);
                 }
             }
+
             GUILayout.EndVertical();
             GUILayout.Space(5);
         }
@@ -255,6 +270,10 @@ namespace Unity.VisualScripting.Community
         private void Search()
         {
             ClearResult();
+            if (!(_pattern.Length > 1 && _pattern.Trim().Length > 1))
+            {
+                return;
+            }
 
             _isSearching = true;
             _searchProgress = 0f;
@@ -316,7 +335,6 @@ namespace Unity.VisualScripting.Community
                         })
                         .ToList();
                 }
-
             }
         }
 
@@ -524,7 +542,7 @@ namespace Unity.VisualScripting.Community
             }
         }
 
-        MatchUnit CheckMatchUnit(Regex matchWord, GraphReference reference,  Unit unit)
+        MatchUnit CheckMatchUnit(Regex matchWord, GraphReference reference, Unit unit)
         {
             var matchRecord = new MatchUnit()
             {
