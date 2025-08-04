@@ -212,6 +212,11 @@ namespace Unity.VisualScripting.Community
             }
 
             data.elapsed += data.unscaled ? Time.unscaledDeltaTime : Time.deltaTime;
+            if (interval.hasValidConnection)
+                data.interval = flow.GetValue<float>(interval);
+            if (count.hasValidConnection)
+                data.count = flow.GetValue<int>(count);
+            
             if (!(data.elapsed >= data.interval)) return;
                 
             var stack = flow.PreserveStack();
