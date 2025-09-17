@@ -85,7 +85,15 @@ namespace Unity.VisualScripting.Community
                         var list = flow.GetValue<IList>(collection);
                         var i = flow.GetValue<int>(index);
                         hasIndex = i >= 0 && i < list.Count;
-                        flow.SetValue(data, list[i]);
+                        if (hasIndex)
+                        {
+                            flow.SetValue(data, list[i]);
+                        }
+                        else
+                        {
+                            flow.SetValue(data, null);
+                        }
+
                     }
 
                     return hasIndex ? valid : invalid;
