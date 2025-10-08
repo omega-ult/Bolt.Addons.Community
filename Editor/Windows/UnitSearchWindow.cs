@@ -22,7 +22,8 @@ namespace Unity.VisualScripting.Community
             Type,
             Method,
             Field,
-            Reference
+            Reference,
+            DefaultValue
         }
 
         enum EntrySource
@@ -316,12 +317,11 @@ namespace Unity.VisualScripting.Community
                 }
             };
             // remove duplication
+            var globalSeen = new HashSet<string>(); // 全局HashSet
             foreach (var key in _unitContainerMap.Keys)
             {
                 var unitList = _unitContainerMap[key];
-                // unitList = unitList.
                 if (unitList is not { Count: > 0 }) continue;
-                var seen = new HashSet<string>();
                 foreach (var container in unitList.Where(container => container.Units != null))
                 {
                     container.Units = container.Units
@@ -331,7 +331,7 @@ namespace Unity.VisualScripting.Community
                         {
                             var keyStr = u.Unit?.ToString();
                             if (keyStr == null) return false;
-                            return seen.Add(keyStr);
+                            return globalSeen.Add(keyStr); // 使用全局HashSet
                         })
                         .ToList();
                 }
@@ -547,11 +547,10 @@ namespace Unity.VisualScripting.Community
             var matchRecord = new MatchUnit()
             {
                 Matches = new List<MatchType>(),
-                // ScriptGraphAsset = null,
-                // StateGraphAsset = null,
                 Reference = reference,
                 Unit = unit
             };
+
             // brutal force to create, this can be optimized, but when?
             // match type name.
             var typeName = unit.GetType().ToString().Split(".").Last();
@@ -680,6 +679,40 @@ namespace Unity.VisualScripting.Community
 
                         break;
                     }
+                }
+            }
+
+            if (unit is StateUnit or SubgraphUnit)
+            {
+                var assetPath = "";
+                switch (unit)
+                {
+                    case StateUnit stateUnit:
+                    {
+                        if (stateUnit.nest.source == GraphSource.Macro)
+                        {
+                            var childReference = reference.ChildReference(stateUnit, false);
+                            var context = UnitUtility.GetEntryContext(childReference);
+                            assetPath = context.assetPath;
+                        }
+                        break;
+                    }
+                    case SubgraphUnit subgraphUnit:
+                        if (subgraphUnit.nest.source == GraphSource.Macro)
+                        {
+                            
+                            var childReference = reference.ChildReference(subgraphUnit, false);
+                            var context = UnitUtility.GetEntryContext(childReference);
+                            assetPath = context.assetPath;
+                        }
+                        break;
+                }
+
+                if (!string.IsNullOrEmpty(assetPath) && matchWord.IsMatch(assetPath))
+                {
+                    matchRecord.Unit = unit;
+                    matchRecord.Matches.Add(MatchType.Reference);
+                    matchRecord.MatchString = assetPath;
                 }
             }
 

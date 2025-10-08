@@ -31,18 +31,15 @@ namespace Unity.VisualScripting.Community
 
         public static EntryContext GetEntryContext(GraphReference assetEntry)
         {
-            if (GraphWindow.active == null) return null;
-            var window = GraphWindow.active;
-            if (window == null) return null;
-            var reference = window.reference;
+            var reference = assetEntry;
 
             var scenePath = "";
-            var assetPath = AssetDatabase.GetAssetPath(reference.serializedObject);
+            var assetPath = AssetDatabase.GetAssetPath(reference?.serializedObject);
             var embeddedSource = EntrySource.GraphAsset;
 
             var context = new EntryContext()
             {
-                RootObject = reference.rootObject,
+                RootObject = reference?.rootObject,
                 prefabStage = PrefabStageUtility.GetCurrentPrefabStage()?.assetPath
             };
 
@@ -52,7 +49,7 @@ namespace Unity.VisualScripting.Community
                 {
                     var stage = PrefabStageUtility.GetCurrentPrefabStage();
                     assetPath = stage.assetPath;
-                    if (reference.rootObject != null)
+                    if (reference?.rootObject != null)
                     {
                         var obj = reference.rootObject as GameObject;
                         if (obj != null)
@@ -67,9 +64,9 @@ namespace Unity.VisualScripting.Community
             else if (string.IsNullOrEmpty(assetPath))
             {
                 // 对于嵌入式图表，serializedObject可能是GameObject或其他对象
-                var obj = reference.gameObject;
+                var obj = reference?.gameObject;
                 // // 对于场景中的对象，使用场景路径
-                scenePath = obj.scene.path;
+                scenePath = obj?.scene.path;
                 context.scenePath = scenePath;
                 if (!string.IsNullOrEmpty(scenePath))
                 {
@@ -88,7 +85,8 @@ namespace Unity.VisualScripting.Community
                     embeddedSource = EntrySource.SceneEmbedded;
                 }
 
-                if (window.context.isPrefabInstance)
+                var window = GraphWindow.active;
+                if (window != null && window.context.isPrefabInstance)
                 {
                     Debug.LogWarning("Unsupported method in non serialized graph.");
                     return null;
@@ -96,7 +94,7 @@ namespace Unity.VisualScripting.Community
             }
 
             var entrySource = EntrySource.GraphAsset;
-            if (reference.machine != null)
+            if (reference?.machine != null)
             {
                 entrySource = reference.machine.nest.source == GraphSource.Embed
                     ? embeddedSource
@@ -156,7 +154,7 @@ namespace Unity.VisualScripting.Community
         private static Color _prefabColor = new Color(0.2f, 0.7f, 0.9f);
         private static Color _sceneColor = new Color(0.7f, 0.7f, 0.7f);
 
-        public static void DrawContextButton(EntryContext context)
+        public static void DrawContextButton(EntryContext context, Action onClick = null)
         {
             switch (context.source)
             {
@@ -168,6 +166,7 @@ namespace Unity.VisualScripting.Community
                         if (asset != null)
                         {
                             EditorGUIUtility.PingObject(asset);
+                            onClick?.Invoke();
                         }
                     }
 
@@ -181,6 +180,7 @@ namespace Unity.VisualScripting.Community
                         if (asset != null)
                         {
                             EditorGUIUtility.PingObject(asset);
+                            onClick?.Invoke();
                         }
                     }
 
@@ -194,6 +194,7 @@ namespace Unity.VisualScripting.Community
                         if (asset != null)
                         {
                             EditorGUIUtility.PingObject(asset);
+                            onClick?.Invoke();
                         }
                     }
 
@@ -327,15 +328,17 @@ namespace Unity.VisualScripting.Community
             var flowGraph = graphReference.graph as FlowGraph;
             if (flowGraph == null) yield break;
             var units = flowGraph.units;
+            
             foreach (var element in units)
             {
                 var unit = element as Unit;
-
+                
                 switch (unit)
                 {
                     // going deep
                     case SubgraphUnit subgraphUnit:
                     {
+                        yield return (graphReference, subgraphUnit);
                         var subGraph = subgraphUnit.nest.embed ?? subgraphUnit.nest.graph;
                         if (subGraph == null) continue;
                         // find sub graph.
@@ -344,11 +347,11 @@ namespace Unity.VisualScripting.Community
                         {
                             yield return item;
                         }
-
                         break;
                     }
                     case StateUnit stateUnit:
                     {
+                        yield return (graphReference, stateUnit);
                         var stateGraph = stateUnit.nest.embed ?? stateUnit.nest.graph;
                         if (stateGraph == null) continue;
                         // find state graph.

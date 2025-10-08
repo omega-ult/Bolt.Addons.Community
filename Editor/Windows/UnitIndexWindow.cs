@@ -19,6 +19,7 @@ namespace Unity.VisualScripting.Community
             public Object reference;
             public Type type;
             public string assetPath;
+            public GraphReference graph;
         }
 
         class UnitInfo
@@ -51,6 +52,7 @@ namespace Unity.VisualScripting.Community
             window.titleContent = new GUIContent("Unit Index");
         }
 
+        
         private void OnGUI()
         {
             GUILayout.BeginHorizontal();
@@ -84,6 +86,7 @@ namespace Unity.VisualScripting.Community
 
 
             _unitScrollPosition = GUILayout.BeginScrollView(_unitScrollPosition, "box", GUILayout.ExpandHeight(true));
+            
             var units = GetDetailUnit(_selectedGraphInfo);
             var pattern = new Regex(_unitFilterString, RegexOptions.IgnoreCase);
             foreach (var (path, unitList) in units)
@@ -98,6 +101,11 @@ namespace Unity.VisualScripting.Community
                         label += " (" + unit.Meta + ")";
                     }
 
+                    // var iconType = unit.Unit.GetType().AssemblyQualifiedName;
+                    // Debug.Log(string.Format("iconType: {0}", iconType));
+                    // var tex = Icons.Icon(iconType);
+                    // var icon = new GUIContent(tex[IconSize.Small]);
+                    
                     var tex = Icons.Icon(unit.Unit.GetType());
                     var icon = new GUIContent(tex[IconSize.Small]);
                     icon.text = label;
@@ -116,6 +124,33 @@ namespace Unity.VisualScripting.Community
 
 
             GUILayout.EndHorizontal(); // 结束整体布局
+        }
+
+        void OnActiveContextChanged(IGraphContext context)
+        {
+            if (GraphWindow.active == null)
+            {
+                return;
+            }
+            
+            var activeGrahp = GraphWindow.active.reference;
+            var graphInfo = new GraphInfo()
+            {
+                title = activeGrahp.graph.title,
+                //title = context.windowTitle,
+                source = "Graph",
+                type = activeGrahp.GetType(),
+                reference = activeGrahp.serializedObject,
+                graph = activeGrahp,
+                assetPath = AssetDatabase.GetAssetPath(activeGrahp.serializedObject)
+            };
+            _selectedGraphInfo = graphInfo;
+            var existed = _graphList.Any(x => x.assetPath == graphInfo.assetPath);
+            if (!existed)
+            {
+                _graphList.Add(graphInfo);
+            }
+            this.Repaint();
         }
 
         void DrawGraphList()
@@ -160,14 +195,17 @@ namespace Unity.VisualScripting.Community
                     if (assetInfo.source.Equals("Graph"))
                     {
                         string fileName = System.IO.Path.GetFileNameWithoutExtension(assetInfo.assetPath);
-
+                        
+                        DrawGraphIcon(assetInfo, UnitUtility.EntrySource.GraphAsset);
+                        
                         // 使用按钮显示每个 Script Graph 文件路径
-                        EditorGUIUtility.SetIconSize(new Vector2(16, 16));
-                        var icon = EditorGUIUtility.ObjectContent(assetInfo.reference, assetInfo.type);
-                        icon.text = fileName;
-                        if (GUILayout.Button(icon))
+                        //EditorGUIUtility.SetIconSize(new Vector2(16, 16));
+                        //var icon = EditorGUIUtility.ObjectContent(assetInfo.reference, assetInfo.type);
+                        //icon.text = fileName;
+                        if (GUILayout.Button(fileName))
                         {
                             // 用户点击某个按钮时，跳转并高亮显示该文件
+                            
                             PingObjectInProject(assetInfo.assetPath);
                             // var detail = GetDetail(assetInfo.AssetPath);
                             _selectedGraphInfo = assetInfo;
@@ -190,11 +228,15 @@ namespace Unity.VisualScripting.Community
                             string fileName = assetInfo.reference.name;
                             string gameObjectPath = SceneManager.GetActiveScene().path;
 
-                            // 使用按钮显示每个 Script Graph 文件路径
+
+                            DrawGraphIcon(assetInfo, UnitUtility.EntrySource.PrefabEmbedded);
+                            
                             if (GUILayout.Button(fileName))
                             {
                                 // 用户点击某个按钮时，跳转并高亮显示该文件
-                                PingObjectInProject(gameObjectPath);
+                            
+                                PingObjectInProject(assetInfo.assetPath);
+                                // var detail = GetDetail(assetInfo.AssetPath);
                                 _selectedGraphInfo = assetInfo;
                             }
                         }
@@ -206,6 +248,27 @@ namespace Unity.VisualScripting.Community
 
                 GUILayout.EndScrollView();
             }
+        }
+
+        private void DrawGraphIcon(GraphInfo assetInfo, UnitUtility.EntrySource source)
+        {
+            UnitUtility.EntryContext contextEntry;
+            if (assetInfo.graph == null)
+            {
+                contextEntry = new UnitUtility.EntryContext()
+                {
+                    source = source,
+                    assetPath = assetInfo.assetPath,
+                };
+            }
+            else
+            {
+                contextEntry = UnitUtility.GetEntryContext(assetInfo.graph);
+            }
+            UnitUtility.DrawContextButton(contextEntry, () =>
+            {
+                _selectedGraphInfo = assetInfo;
+            });        
         }
 
         bool FilterDisplayGraph(Regex pattern, GraphInfo graph)
@@ -239,12 +302,16 @@ namespace Unity.VisualScripting.Community
         {
             // 监听 Unity 编辑器中的资源选择变化
             Selection.selectionChanged += OnSelectionChanged;
+            GraphWindow.activeContextChanged += OnActiveContextChanged;
+
         }
 
         private void OnDisable()
         {
             // 注销监听
             Selection.selectionChanged -= OnSelectionChanged;
+            GraphWindow.activeContextChanged -= OnActiveContextChanged;
+
         }
 
         List<UnitInfo> BuildUnitDetail(IEnumerable<(GraphReference, Unit)> iterator)
@@ -275,20 +342,29 @@ namespace Unity.VisualScripting.Community
 
             if (graphInfo.source.Equals("Graph"))
             {
-                var scriptAsset = AssetDatabase.LoadAssetAtPath<ScriptGraphAsset>(graphInfo.assetPath);
-                if (scriptAsset != null)
+                if (string.IsNullOrEmpty(graphInfo.assetPath) && graphInfo.graph != null)
                 {
-                    if (scriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
-                    var baseRef = scriptAsset.GetReference().AsReference();
+                    if (graphInfo.graph.graph is not FlowGraph flowGraph) return result;
+                    var baseRef = graphInfo.graph.AsReference();
                     fetched = BuildUnitDetail(UnitUtility.TraverseFlowGraphUnit(baseRef));
                 }
-
-                var stateAsset = AssetDatabase.LoadAssetAtPath<StateGraphAsset>(graphInfo.assetPath);
-                if (stateAsset != null)
+                else
                 {
-                    if (stateAsset.GetReference().graph is not StateGraph stateGraph) return result;
-                    var baseRef = stateAsset.GetReference().AsReference();
-                    fetched = BuildUnitDetail(UnitUtility.TraverseStateGraphUnit(baseRef));
+                    var scriptAsset = AssetDatabase.LoadAssetAtPath<ScriptGraphAsset>(graphInfo.assetPath);
+                    if (scriptAsset != null)
+                    {
+                        if (scriptAsset.GetReference().graph is not FlowGraph flowGraph) return result;
+                        var baseRef = scriptAsset.GetReference().AsReference();
+                        fetched = BuildUnitDetail(UnitUtility.TraverseFlowGraphUnit(baseRef));
+                    }
+
+                    var stateAsset = AssetDatabase.LoadAssetAtPath<StateGraphAsset>(graphInfo.assetPath);
+                    if (stateAsset != null)
+                    {
+                        if (stateAsset.GetReference().graph is not StateGraph stateGraph) return result;
+                        var baseRef = stateAsset.GetReference().AsReference();
+                        fetched = BuildUnitDetail(UnitUtility.TraverseStateGraphUnit(baseRef));
+                    }
                 }
             }
             else if (graphInfo.source.Equals("Embed") && graphInfo.reference != null)
@@ -419,8 +495,8 @@ namespace Unity.VisualScripting.Community
                 // 检查扩展名或其他方式来确定是否是 Script Graph 文件
                 string assetPath = AssetDatabase.GetAssetPath(selectedObject);
 
-                var existed = _graphList.Any(x => x.assetPath.Equals(assetPath));
-                if (!existed)
+                var existed = _graphList.Find(x => x.assetPath.Equals(assetPath));
+                if (existed == null)
                 {
                     var graphInfo = new GraphInfo()
                     {
@@ -434,6 +510,11 @@ namespace Unity.VisualScripting.Community
                     _selectedGraphInfo = graphInfo;
                     dirty = true;
                 }
+                else
+                {
+                    _selectedGraphInfo = existed;
+                    dirty = true;                
+                }
             }
             else if (selectedObject != null && selectedObject is GameObject)
             {
@@ -441,8 +522,8 @@ namespace Unity.VisualScripting.Community
 
                 if (sm != null)
                 {
-                    var existed = _graphList.Any(x => x.reference.Equals(selectedObject));
-                    if (!existed)
+                    var existed = _graphList.Find(x => x.reference.Equals(selectedObject));
+                    if (existed == null)
                     {
                         var graphInfo = new GraphInfo()
                         {
@@ -450,19 +531,24 @@ namespace Unity.VisualScripting.Community
                             source = "Embed",
                             type = typeof(ScriptGraphAsset),
                             reference = selectedObject,
-                            assetPath = "", //selectedObject.name
+                            assetPath = AssetDatabase.GetAssetPath(selectedObject), //selectedObject.name 
                         };
                         _graphList.Add(graphInfo);
                         _selectedGraphInfo = graphInfo;
                         dirty = true;
+                    }
+                    else
+                    {
+                        _selectedGraphInfo = existed;
+                        dirty = true;                
                     }
                 }
 
                 var state = selectedObject.GetComponent<StateMachine>();
                 if (state != null)
                 {
-                    var existed = _graphList.Any(x => x.reference.Equals(selectedObject));
-                    if (!existed)
+                    var existed = _graphList.Find(x => x.reference.Equals(selectedObject));
+                    if (existed == null)
                     {
                         var graphInfo = new GraphInfo()
                         {
@@ -470,11 +556,16 @@ namespace Unity.VisualScripting.Community
                             source = "Embed",
                             type = typeof(StateGraphAsset),
                             reference = selectedObject,
-                            assetPath = "", //selectedObject.name
+                            assetPath = AssetDatabase.GetAssetPath(selectedObject), //selectedObject.name 
                         };
                         _graphList.Add(graphInfo);
                         _selectedGraphInfo = graphInfo;
                         dirty = true;
+                    }
+                    else
+                    {
+                        _selectedGraphInfo = existed;
+                        dirty = true;   
                     }
                 }
             }
