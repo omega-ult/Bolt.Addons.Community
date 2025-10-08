@@ -23,7 +23,6 @@ namespace Unity.VisualScripting.Community
             Method,
             Field,
             Reference,
-            DefaultValue
         }
 
         enum EntrySource
