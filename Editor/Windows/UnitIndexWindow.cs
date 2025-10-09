@@ -25,6 +25,7 @@ namespace Unity.VisualScripting.Community
             public string Name;
             public string Path;
             public string Meta;
+            public List<string> Values;
         }
 
         [SerializeField] private List<GraphInfo> _graphList = new();
@@ -141,7 +142,9 @@ namespace Unity.VisualScripting.Community
         {
             if (string.IsNullOrEmpty(_unitFilterString)) return true;
             if (pattern.IsMatch(unit.Name)) return true;
-            return unit.Meta != null && pattern.IsMatch(unit.Meta);
+            var metaFit = unit.Meta != null && pattern.IsMatch(unit.Meta);
+            var valueFit = unit.Values.Any(pattern.IsMatch);
+            return metaFit || valueFit;
         }
 
 
@@ -168,6 +171,7 @@ namespace Unity.VisualScripting.Community
                 detail.Unit = unit;
                 detail.Reference = reference;
                 detail.Meta = UnitUtility.UnitBrief(unit);
+                detail.Values = UnitUtility.UnitValues(unit);
                 result.Add(detail);
             }
 

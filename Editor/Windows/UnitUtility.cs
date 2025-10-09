@@ -328,11 +328,11 @@ namespace Unity.VisualScripting.Community
             var flowGraph = graphReference.graph as FlowGraph;
             if (flowGraph == null) yield break;
             var units = flowGraph.units;
-            
+
             foreach (var element in units)
             {
                 var unit = element as Unit;
-                
+
                 switch (unit)
                 {
                     // going deep
@@ -347,6 +347,7 @@ namespace Unity.VisualScripting.Community
                         {
                             yield return item;
                         }
+
                         break;
                     }
                     case StateUnit stateUnit:
@@ -687,6 +688,33 @@ namespace Unity.VisualScripting.Community
             }
 
             return null;
+        }
+
+        public static List<string> UnitValues(IUnit unit)
+        {
+            if (unit == null) return null;
+            // try read serialized members
+            var result = new List<string>();
+            switch (unit)
+            {
+                case UnifiedVariableUnit { defaultValues: not null } unifiedVariableUnit:
+                {
+                    var str = (string)unifiedVariableUnit.defaultValues[nameof(unifiedVariableUnit.name)];
+                    result.Add(str);
+                    break;
+                }
+                default:
+                    foreach (var kvp in unit.defaultValues)
+                    {
+                        var value = kvp.Value;
+                        if (value == null) continue;
+                        var serializedValue = value.ToString();
+                        result.Add(serializedValue);
+                    }
+                    break;
+            }
+
+            return result;
         }
     }
 }
