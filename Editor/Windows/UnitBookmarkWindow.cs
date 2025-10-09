@@ -31,13 +31,13 @@ namespace Unity.VisualScripting.Community
                     switch (context.source)
                     {
                         case UnitUtility.EntrySource.GraphAsset:
-                            fName = $" {context.assetPath}";
+                            fName = $" {Path.GetFileNameWithoutExtension(context.assetPath)}";
                             break;
                         case UnitUtility.EntrySource.PrefabEmbedded:
-                            fName = $" {context.assetPath}";
+                            fName = $" {Path.GetFileNameWithoutExtension(context.assetPath)}";
                             break;
                         case UnitUtility.EntrySource.SceneEmbedded:
-                            fName = $" {context.scenePath}:{context.objectPath}";
+                            fName = $" {Path.GetFileNameWithoutExtension(context.scenePath)}:{context.objectPath}";
                             break;
                     }
 
