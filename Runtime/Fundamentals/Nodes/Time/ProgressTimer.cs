@@ -221,6 +221,7 @@ namespace Unity.VisualScripting.Community
                     data.elapsed = 0;
                     AssignMetrics(flow, data);
                     var stack = flow.PreserveStack();
+                    flow.Invoke(tick);
                     flow.Invoke(cleared);
                     flow.DisposePreservedStack(stack);
                     data.active = false;
@@ -241,6 +242,7 @@ namespace Unity.VisualScripting.Community
                     data.elapsed = data.duration;
                     AssignMetrics(flow, data);
                     var stack = flow.PreserveStack();
+                    flow.Invoke(tick);
                     flow.Invoke(finished);
                     flow.DisposePreservedStack(stack);
                     data.active = false;
