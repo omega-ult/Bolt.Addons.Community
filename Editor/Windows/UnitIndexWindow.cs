@@ -151,6 +151,7 @@ namespace Unity.VisualScripting.Community
         private void OnEnable()
         {
             GraphWindow.activeContextChanged += OnActiveContextChanged;
+            OnActiveContextChanged(GraphWindow.activeContext);
         }
 
         private void OnDisable()
