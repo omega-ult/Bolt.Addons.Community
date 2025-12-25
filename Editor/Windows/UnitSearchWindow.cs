@@ -167,7 +167,8 @@ namespace Unity.VisualScripting.Community
             var containers = FilterContainer(matchFile).ToArray();
             foreach (var container in containers)
             {
-                DrawContainer(container);
+                if (IsAssetValid(container))
+                    DrawContainer(container);
             }
 
 
@@ -192,6 +193,24 @@ namespace Unity.VisualScripting.Community
                     yield return container;
                 }
             }
+        }
+
+        bool IsAssetValid(UnitContainer container)
+        {
+            switch (container.Source)
+            {
+                case EntrySource.GraphAsset:
+                    var graph = AssetDatabase.LoadMainAssetAtPath(container.AssetPath);
+                    return graph != null;
+                case EntrySource.PrefabEmbedded:
+                    var prefab = AssetDatabase.LoadMainAssetAtPath(container.AssetPath);
+                    return (prefab != null);
+                case EntrySource.SceneEmbedded:
+                    var scene = AssetDatabase.LoadMainAssetAtPath(container.ScenePath);
+                    return (scene != null);
+            }
+            return false;
+
         }
 
         void DrawContainer(UnitContainer container)
