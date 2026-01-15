@@ -11,8 +11,8 @@ namespace Unity.VisualScripting.Community
         {
         }
         
-#if VISUAL_SCRIPTING_DDK_1_9
         protected override NodeColorMix baseColor => NodeColor.Green;
+#if VISUAL_SCRIPTING_DDK_1_9
         protected override bool ShowMiniLabel => true;
         protected override string MiniLabel => unit.eventType == null ? base.MiniLabel : $"{unit.eventType.Name}";
         protected override Color MiniLabelColor => ( Color.green + Color.gray );

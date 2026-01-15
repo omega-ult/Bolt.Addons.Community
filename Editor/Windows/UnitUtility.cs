@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Bolt.Addons.Community;
 using Object = UnityEngine.Object;
 
 namespace Unity.VisualScripting.Community
@@ -564,6 +565,12 @@ namespace Unity.VisualScripting.Community
         public static string UnitBrief(IUnit unit)
         {
             if (unit == null) return null;
+
+            if (unit is IUnitBrief unitBrief)
+            {
+                return unitBrief.GetBrief(unit);
+            }
+
             switch (unit)
             {
                 case FlowReroute:
