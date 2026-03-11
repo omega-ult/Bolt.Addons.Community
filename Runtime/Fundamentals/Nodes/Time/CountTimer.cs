@@ -198,7 +198,7 @@ namespace Unity.VisualScripting.Community
             data.current = 1;
             data.count = 0;
 
-            return finished;
+            return null;
         }
 
 
